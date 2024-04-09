@@ -1,13 +1,25 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using OracleOrm.Core;
-using TableInfo = OracleOrm.OracleDbContext.TableInfo;
 
 
 namespace OracleOrm;
 
 
+internal record TableInfo(Type EntityType, string Name, List<string> Fields);
+
 public class DbSet<T> : Queryable<T>
 {
+    internal static readonly Dictionary<string, (string, IEnumerable<string>)> s_dataTypeMapping = new()
+    { 
+        [typeof(string).Name] = ("VARCHAR2", ["VARCHAR2(64)", "NOT NULL"]),
+        [typeof(int).Name] = ("NUMBER", ["INT", "NOT NULL"]),
+        [typeof(double).Name] = ("NUMBER", ["NUMBER", "NOT NULL"]),
+        [typeof(decimal).Name] = ("NUMBER", ["NUMBER", "NOT NULL"]),
+        [typeof(bool).Name] = ("NUMBER", ["NUMBER", "NOT NULL"])
+    };
+
+    internal TableInfo? _tableInfo;
+
+
     private OracleDbContext _context;
 
 
@@ -20,7 +32,7 @@ public class DbSet<T> : Queryable<T>
 
     public void Clear()
     {
-        string tableName = OracleDbContext._tables[typeof(T)].Name;
+        string tableName = _tableInfo.Name;
 
         string clearSql = $"DELETE FROM {tableName.ToUpper()}";
 
@@ -73,7 +85,7 @@ public class DbSet<T> : Queryable<T>
 
                 string columnName = column.ColumnName;
 
-                if (OracleDbContext.s_dataTypeMapping.TryGetValue(cSharpType, out (string, IEnumerable<string>) oraclePair))
+                if (s_dataTypeMapping.TryGetValue(cSharpType, out (string, IEnumerable<string>) oraclePair))
                 {
                     if (oracleType != oraclePair.Item1)
                         throw new InvalidOperationException($"The given type {cSharpType} and the table type {oracleType} is not paired.");
@@ -86,7 +98,7 @@ public class DbSet<T> : Queryable<T>
                 fields.Add(GetFieldCreation(cSharpType, columnName));
             }
 
-            OracleDbContext._tables[typeof(T)] = new TableInfo(EntityType: typeof(T), tableName, fields);
+            _tableInfo = new TableInfo(EntityType: typeof(T), tableName, fields);
         }
         else
         {
@@ -100,7 +112,7 @@ public class DbSet<T> : Queryable<T>
 
             string tableCreationSql = $"CREATE TABLE {tableName} (\n{string.Join(",\n", fields.Select(s => $"\t{s}"))}\n)";
 
-            OracleDbContext._tables[typeof(T)] = new TableInfo(EntityType: typeof(T), tableName, fields);
+            _tableInfo = new TableInfo(EntityType: typeof(T), tableName, fields);
 
             _context.ExecuteQuery(tableCreationSql);
         }
@@ -109,7 +121,7 @@ public class DbSet<T> : Queryable<T>
 
     private string GetFieldCreation(string cSharpType, string columnName)
     {
-        if (OracleDbContext.s_dataTypeMapping.TryGetValue(cSharpType, out (string, IEnumerable<string>) oraclePair))
+        if (s_dataTypeMapping.TryGetValue(cSharpType, out (string, IEnumerable<string>) oraclePair))
         {
             if (columnName.Equals("id", StringComparison.CurrentCultureIgnoreCase))
             {
@@ -126,5 +138,4 @@ public class DbSet<T> : Queryable<T>
             throw new InvalidOperationException($"{cSharpType} is not supported as column type.");
         }
     }
-
 }

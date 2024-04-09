@@ -22,7 +22,7 @@ class Program
         //Console.WriteLine(CaseConverter.ToPascalCase("GroupId"));
 
 
-        var res = context.Students.Where(s => true).ToList();
+        var res = context.Students.Where(s => s.Id > 1).ToList();
 
         //context.Students.Clear();
     }

@@ -157,20 +157,6 @@ public abstract class OracleDbContext : DbContext
             .Invoke(this, []);
     }
 
-    internal static readonly Dictionary<string, (string, IEnumerable<string>)> s_dataTypeMapping = new()
-    { 
-        ["String"] = ("VARCHAR2", ["VARCHAR2(64)", "NOT NULL"]),
-        ["Int32"] = ("NUMBER", ["INT", "NOT NULL"]),
-        ["Double"] = ("NUMBER", ["NUMBER", "NOT NULL"]),
-        ["Decimal"] = ("NUMBER", ["NUMBER", "NOT NULL"]),
-        ["Bool"] = ("NUMBER", ["NUMBER", "NOT NULL"])
-    };
-
-    internal static readonly Dictionary<Type, TableInfo> _tables = [];
-
-    internal record TableInfo(Type EntityType, string Name, List<string> Fields);
-
-
     private DbSet<T> CreateSet<T>()
     {
         return new DbSet<T>(this);

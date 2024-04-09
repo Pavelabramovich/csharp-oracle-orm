@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Query;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Reflection;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,80 +11,11 @@ using System.Threading.Tasks;
 namespace OracleOrm;
 
 
-//public class QueryBuilder : ExpressionVisitor
-//{
-//    private readonly OracleDbContext _context;
-
-
-//    private readonly Stack<Expression> _expressions;
-
-
-//    public QueryBuilder(OracleDbContext context)
-//    {
-//        _context = context;
-
-//        _expressions = [];
-//    }
-
-//    protected override Expression VisitMethodCall(MethodCallExpression node)
-//    {
-//        if (node.Method.IsGenericMethod)
-//        {
-//            var genericMethod = node.Method.GetGenericMethodDefinition();
-
-//            if (genericMethod == QueryableMethods.Select)
-//            {
-//                var selectExpression = VisitSelect(node);
-//                _expressions.Push(selectExpression);
-//            }
-//            else if (genericMethod == QueryableMethods.Where)
-//            {
-//                var whereExpression = VisitWhere(node);
-//                _expressions.Push(whereExpression);
-//            }
-
-//        }
-
-//        return base.VisitMethodCall(node);
-//    }
-
-//    private Expression VisitSelect(MethodCallExpression node)
-//    {
-//        return ((UnaryExpression)node.Arguments[1]).Operand;
-//    }
-
-//    private Expression VisitWhere(MethodCallExpression node)
-//    {
-//        return ((UnaryExpression)node.Arguments[1]).Operand;
-//    }
-
-//    public string Compile(Expression expression)
-//    {
-//        Visit(expression);
-
-//        string selectListClause = "*";
-//        string whereClause = "1 = 1";
-
-//        var tableName = "Students";
-
-//        var sql = $"""
-//            SELECT
-//                {selectListClause}
-//            FROM
-//                {tableName}
-//            WHERE
-//                {whereClause}
-//            """;
-
-//        return sql;
-//    }
-//}
-
-
 public class QueryBuilder : ExpressionVisitor
 {
     private readonly StringBuilder _sb;
     private readonly OracleDbContext _context;
+
 
     internal QueryBuilder(OracleDbContext context)
     {
@@ -202,7 +133,10 @@ public class QueryBuilder : ExpressionVisitor
         if (c.Value is IQueryable queryable)
         {
             _sb.Append("SELECT * FROM ");
-            _sb.Append(queryable.ElementType.Name);
+
+            string tableName = GetTableName(queryable.ElementType);
+
+            _sb.Append(tableName);
         }
         else if (c.Value == null)
         {
@@ -213,7 +147,7 @@ public class QueryBuilder : ExpressionVisitor
             switch (Type.GetTypeCode(c.Value.GetType()))
             {
                 case TypeCode.Boolean:
-                    _sb.Append(((bool)c.Value) ? 1 : 0);
+                    _sb.Append(((bool)c.Value) ? "1 = 1" : "1 = 0");
                     break;
 
                 case TypeCode.String:
@@ -243,5 +177,28 @@ public class QueryBuilder : ExpressionVisitor
         }
 
         throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
+    }
+
+
+    private string GetTableName(Type elementType)
+    {
+        var dbSetProperty = _context
+            .GetType()
+            .GetProperties()
+            .Single(p => p.PropertyType == typeof(DbSet<>).MakeGenericType(elementType));
+
+        object? dbSet = dbSetProperty.GetValue(_context)
+            ?? throw new InvalidOperationException("dbSet is null.");
+
+        var tableInfo = dbSet
+            .GetType()
+            .GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy)
+            .Single(f => f.Name == nameof(DbSet<object>._tableInfo))
+            .GetValue(dbSet)
+                ?? throw new InvalidOperationException("tableInfo is null.");
+
+        string tableName = ((TableInfo)tableInfo).Name;
+
+        return tableName;
     }
 }
