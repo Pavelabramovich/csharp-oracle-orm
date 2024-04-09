@@ -68,8 +68,6 @@ internal class QueryFormatter : DbExpressionVisitor
     {
         throw new NotSupportedException(string.Format("The method '{0}' is not supported", m.Method.Name));
     }
-
-
     protected override Expression VisitUnary(UnaryExpression u)
     {
         switch (u.NodeType)
@@ -106,7 +104,7 @@ internal class QueryFormatter : DbExpressionVisitor
                 break;
 
             case ExpressionType.NotEqual:
-                sb.Append(" <> ");
+                sb.Append(" != ");
                 break;
 
             case ExpressionType.LessThan:
@@ -123,6 +121,14 @@ internal class QueryFormatter : DbExpressionVisitor
 
             case ExpressionType.GreaterThanOrEqual:
                 sb.Append(" >= ");
+                break;
+
+            case ExpressionType.Add:
+                sb.Append(" + ");
+                break;
+
+            case ExpressionType.Subtract:
+                sb.Append(" - ");
                 break;
 
             default:
@@ -198,7 +204,7 @@ internal class QueryFormatter : DbExpressionVisitor
             if (c == null || c.Name != select.Columns[i].Name)
             {
                 sb.Append(" AS "); // After field
-                sb.Append(column.Name + "_");
+                sb.Append(column.Name);
             }
         }
 
@@ -249,6 +255,46 @@ internal class QueryFormatter : DbExpressionVisitor
         }
 
         return source;
+    }
+
+    public override Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
+    {
+        var method = funcCalling.Method;
+        var instance = funcCalling.Instance;
+        var @params = funcCalling.Params.ToArray();
+
+        if (method == ParsableMethods.StringIndexing)
+        {
+            Expression @string = instance!;
+            Expression index = @params[0];
+
+            Expression indexPlusOne = Expression.MakeBinary(ExpressionType.Add, index, Expression.Constant(1));
+
+            CreateFunctionCallingString("SUBSTR", [@string, indexPlusOne, indexPlusOne]);
+            return funcCalling;
+        }
+        else
+        {
+            throw new NotSupportedException();
+        }
+
+        void CreateFunctionCallingString(string name, params Expression[] @params)
+        {
+            sb.Append(name.ToUpper());
+            sb.Append('(');
+
+            for (int i = 0; i < @params.Length; i++)
+            {
+                Expression param = @params[i];
+
+                Visit(param);
+
+                if (i < @params.Length - 1)
+                    sb.Append(", ");
+            }
+
+            sb.Append(')');
+        }
     }
 
     private string GetTableName(Type elementType)

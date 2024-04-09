@@ -18,11 +18,17 @@ internal class ProjectionBuilder : DbExpressionVisitor
 
     private static MethodInfo miGetValue;
 
+
+    string rowAlias;
+    static MethodInfo miExecuteSubQuery;
+
+
     internal ProjectionBuilder()
     {
         if (miGetValue == null)
         {
             miGetValue = typeof(ProjectionRow).GetMethod("GetValue");
+            miExecuteSubQuery = typeof(ProjectionRow).GetMethod("ExecuteSubQuery");
         }
     }
 

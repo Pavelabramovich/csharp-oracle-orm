@@ -18,13 +18,11 @@ class Program
     {
         DevContext context = new();
 
-
-        //Console.WriteLine(CaseConverter.ToPascalCase("GroupId"));
-
         int id = 4;
 
-        var res = context.Students.Where(s => s.Name != "Petya").Select(s => s.Name[0]).ToList();
-
-        //context.Students.Clear();
+        var res = context.Students
+            .Select(s => s)
+            .Where(s => s.Name != "Petya")
+            .Select(s => s.Name[s.Id - s.Id]).ToList();
     }
 }

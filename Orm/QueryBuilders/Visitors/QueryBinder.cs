@@ -1,4 +1,5 @@
-﻿using OracleOrm.Queries.Visitors;
+﻿using Microsoft.EntityFrameworkCore.Query;
+using OracleOrm.Queries.Visitors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,40 +55,36 @@ internal class QueryBinder : ExpressionVisitor
     }
 
 
-    protected override Expression VisitMethodCall(MethodCallExpression m)
+    protected override Expression VisitMethodCall(MethodCallExpression methodCallExpr)
     {
-        if (m.Method.DeclaringType == typeof(Queryable) 
-            || m.Method.DeclaringType == typeof(Enumerable))
+        var method = methodCallExpr.Method;
+        method = method.IsGenericMethod ? method.GetGenericMethodDefinition() : method;
+
+        if (method == QueryableMethods.Select)
         {
-            return m.Method.Name switch
-            {
-                "Where" => this.BindWhere(m.Type, m.Arguments[0], (LambdaExpression)StripQuotes(m.Arguments[1])),
-                "Select" => this.BindSelect(m.Type, m.Arguments[0], (LambdaExpression)StripQuotes(m.Arguments[1])),
-                _ => throw new NotSupportedException(string.Format("The method '{0}' is not supported", m.Method.Name)),
-            };
+            return BindSelect(methodCallExpr.Type, methodCallExpr.Arguments[0], (LambdaExpression)StripQuotes(methodCallExpr.Arguments[1]));
         }
-        else
+        else if (method == QueryableMethods.Where)
         {
-            throw new NotSupportedException(string.Format("The method '{0}' is not supported", m.Method.Name));
+            return BindWhere(methodCallExpr.Type, methodCallExpr.Arguments[0], (LambdaExpression)StripQuotes(methodCallExpr.Arguments[1]));
+        }
+        else if (method == ParsableMethods.StringIndexing)
+        {
+            return BindMethodCalling(method, methodCallExpr);
         }
 
-        return base.VisitMethodCall(m);
+
+        //else
+        //{
+        //    throw new NotSupportedException(string.Format("The method '{0}' is not supported", method.Name));
+        //}
+
+        return base.VisitMethodCall(methodCallExpr);
     }
 
-
-    private Expression BindWhere(Type resultType, Expression source, LambdaExpression predicate)
+    protected override MemberAssignment VisitMemberAssignment(MemberAssignment node)
     {
-        ProjectionExpression projection = (ProjectionExpression)this.Visit(source);
-        this.map[predicate.Parameters[0]] = projection.Projector;
-        Expression where = this.Visit(predicate.Body);
-        string alias = this.GetNextAlias();
-
-        ProjectedColumns pc = this.ProjectColumns(projection.Projector, alias, GetExistingAlias(projection.Source));
-
-        return new ProjectionExpression(
-            new SelectExpression(resultType, alias, pc.Columns, projection.Source, where),
-            pc.Projector
-        );
+        return base.VisitMemberAssignment(node);
     }
 
     private Expression BindSelect(Type resultType, Expression source, LambdaExpression selector)
@@ -104,12 +101,38 @@ internal class QueryBinder : ExpressionVisitor
         );
     }
 
+    private Expression BindWhere(Type resultType, Expression source, LambdaExpression predicate)
+    {
+        ProjectionExpression projection = (ProjectionExpression)this.Visit(source);
+        this.map[predicate.Parameters[0]] = projection.Projector;
+        Expression where = this.Visit(predicate.Body);
+        string alias = this.GetNextAlias();
+
+        ProjectedColumns pc = this.ProjectColumns(projection.Projector, alias, GetExistingAlias(projection.Source));
+
+        return new ProjectionExpression(
+            new SelectExpression(resultType, alias, pc.Columns, projection.Source, where),
+            pc.Projector
+        );
+    }
+
+    private Expression BindMethodCalling(MethodInfo method, MethodCallExpression source)
+    {
+
+
+
+        return new FunctionCallingExpression(method, Visit(source.Object), source.Arguments.Select(arg => Visit(arg)));
+    }
+
     private static string GetExistingAlias(Expression source)
     {
         return (DbExpressionType)source.NodeType switch
         {
             DbExpressionType.Select => ((SelectExpression)source).Alias,
             DbExpressionType.Table => ((TableExpression)source).Alias,
+
+      //      DbExpressionType.FunctionCalling => ((TableExpression)source).Alias,
+
             _ => throw new InvalidOperationException(string.Format("Invalid source node type '{0}'", source.NodeType)),
         };
     }

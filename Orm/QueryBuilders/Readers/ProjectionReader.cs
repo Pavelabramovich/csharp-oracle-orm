@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -99,6 +100,11 @@ internal class ProjectionReader<T> : IEnumerable<T>, IEnumerable
         public void Dispose()
         {
             reader.Dispose();
+        }
+
+        public override IEnumerable<T1> ExecuteSubQuery<T1>(LambdaExpression query)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -12,20 +12,21 @@ namespace OracleOrm;
 
 public class DbExpressionVisitor : ExpressionVisitor
 {
-    public override Expression Visit(Expression? exp)
+    public override Expression Visit(Expression? expr)
     {
-        if (exp == null)
+        if (expr == null)
         {
             return null;
         }
 
-        return (DbExpressionType)exp.NodeType switch
+        return (DbExpressionType)expr.NodeType switch
         {
-            DbExpressionType.Table => VisitTable((TableExpression)exp),
-            DbExpressionType.Column => VisitColumn((ColumnExpression)exp),
-            DbExpressionType.Select => VisitSelect((SelectExpression)exp),
-            DbExpressionType.Projection => VisitProjection((ProjectionExpression)exp),
-            _ => base.Visit(exp),
+            DbExpressionType.Table => VisitTable((TableExpression)expr),
+            DbExpressionType.Column => VisitColumn((ColumnExpression)expr),
+            DbExpressionType.Select => VisitSelect((SelectExpression)expr),
+            DbExpressionType.Projection => VisitProjection((ProjectionExpression)expr),
+            DbExpressionType.FunctionCalling => VisitFunctionCalling((FunctionCallingExpression)expr),
+            _ => base.Visit(expr),
         };
     }
 
@@ -77,6 +78,13 @@ public class DbExpressionVisitor : ExpressionVisitor
 
         return proj;
     }
+
+    public virtual Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
+    {
+        return funcCalling;
+    }
+
+
 
 
     public ReadOnlyCollection<ColumnDeclaration> VisitColumnDeclarations(ReadOnlyCollection<ColumnDeclaration> columns)
