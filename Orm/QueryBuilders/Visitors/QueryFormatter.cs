@@ -2,32 +2,34 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using OracleOrm.Queries.Expressions;
 
-
-namespace OracleOrm.Queries.Visitors;
-
+namespace OracleOrm;
 
 internal class QueryFormatter : DbExpressionVisitor
 {
+    private OracleDbContext _context;
     StringBuilder sb;
+
     int indent = 2;
     int depth;
 
-
-    internal QueryFormatter()
-    { }
+    internal QueryFormatter(OracleDbContext context)
+    {
+        _context = context;
+    }
 
     internal string Format(Expression expression)
     {
-        sb = new StringBuilder();
-        Visit(expression);
+        this.sb = new StringBuilder();
+        this.Visit(expression);
 
-        return sb.ToString();
+        Console.WriteLine(sb.ToString());
+
+        return this.sb.ToString();
     }
-
 
     protected enum Identation
     {
@@ -36,29 +38,27 @@ internal class QueryFormatter : DbExpressionVisitor
         Outer
     }
 
-
     internal int IdentationWidth
     {
-        get { return indent; }
-        set { indent = value; }
+        get { return this.indent; }
+        set { this.indent = value; }
     }
 
     private void AppendNewLine(Identation style)
     {
         sb.AppendLine();
-
         if (style == Identation.Inner)
         {
-            depth++;
+            this.depth++;
         }
         else if (style == Identation.Outer)
         {
-            depth--;
+            this.depth--;
 
-            System.Diagnostics.Debug.Assert(depth >= 0);
+            System.Diagnostics.Debug.Assert(this.depth >= 0);
         }
 
-        for (int i = 0, n = depth * indent; i < n; i++)
+        for (int i = 0, n = this.depth * this.indent; i < n; i++)
         {
             sb.Append(" ");
         }
@@ -69,14 +69,14 @@ internal class QueryFormatter : DbExpressionVisitor
         throw new NotSupportedException(string.Format("The method '{0}' is not supported", m.Method.Name));
     }
 
+
     protected override Expression VisitUnary(UnaryExpression u)
     {
         switch (u.NodeType)
         {
             case ExpressionType.Not:
                 sb.Append(" NOT ");
-
-                Visit(u.Operand);
+                this.Visit(u.Operand);
                 break;
 
             default:
@@ -89,7 +89,7 @@ internal class QueryFormatter : DbExpressionVisitor
     protected override Expression VisitBinary(BinaryExpression b)
     {
         sb.Append("(");
-        Visit(b.Left);
+        this.Visit(b.Left);
 
         switch (b.NodeType)
         {
@@ -129,8 +129,9 @@ internal class QueryFormatter : DbExpressionVisitor
                 throw new NotSupportedException(string.Format("The binary operator '{0}' is not supported", b.NodeType));
         }
 
-        Visit(b.Right);
+        this.Visit(b.Right);
         sb.Append(")");
+
         return b;
     }
 
@@ -145,7 +146,7 @@ internal class QueryFormatter : DbExpressionVisitor
             switch (Type.GetTypeCode(c.Value.GetType()))
             {
                 case TypeCode.Boolean:
-                    sb.Append((bool)c.Value ? 1 : 0);
+                    sb.Append(((bool)c.Value) ? 1 : 0);
                     break;
 
                 case TypeCode.String:
@@ -166,7 +167,7 @@ internal class QueryFormatter : DbExpressionVisitor
         return c;
     }
 
-    protected override Expression VisitColumn(ColumnExpression column)
+    public override Expression VisitColumn(ColumnExpression column)
     {
         if (!string.IsNullOrEmpty(column.Alias))
         {
@@ -174,7 +175,7 @@ internal class QueryFormatter : DbExpressionVisitor
             sb.Append(".");
         }
 
-        sb.Append(column.Name);
+        sb.Append(CaseConverter.ToSnakeCase(column.Name));
 
         return column;
     }
@@ -182,6 +183,7 @@ internal class QueryFormatter : DbExpressionVisitor
     protected override Expression VisitSelect(SelectExpression select)
     {
         sb.Append("SELECT ");
+
         for (int i = 0, n = select.Columns.Count; i < n; i++)
         {
             ColumnDeclaration column = select.Columns[i];
@@ -191,28 +193,29 @@ internal class QueryFormatter : DbExpressionVisitor
                 sb.Append(", ");
             }
 
-            ColumnExpression c = Visit(column.Expression) as ColumnExpression;
+            ColumnExpression c = this.Visit(column.Expression) as ColumnExpression;
 
             if (c == null || c.Name != select.Columns[i].Name)
             {
-                sb.Append(" AS ");
-                sb.Append(column.Name);
+                sb.Append(" AS "); // After field
+                sb.Append(column.Name + "_");
             }
         }
 
         if (select.From != null)
         {
-            AppendNewLine(Identation.Same);
+            this.AppendNewLine(Identation.Same);
             sb.Append("FROM ");
-
-            VisitSource(select.From);
+            this.VisitSource(select.From);
         }
 
         if (select.Where != null)
         {
-            AppendNewLine(Identation.Same);
+            this.AppendNewLine(Identation.Same);
+
             sb.Append("WHERE ");
-            Visit(select.Where);
+
+            this.Visit(select.Where);
         }
 
         return select;
@@ -224,22 +227,20 @@ internal class QueryFormatter : DbExpressionVisitor
         {
             case DbExpressionType.Table:
                 TableExpression table = (TableExpression)source;
-                sb.Append(table.Name);
-                sb.Append(" AS ");
+                sb.Append(GetTableName(table.ElementsType));
+                sb.Append(" "); // Oracle only
                 sb.Append(table.Alias);
                 break;
 
             case DbExpressionType.Select:
                 SelectExpression select = (SelectExpression)source;
                 sb.Append("(");
-
-                AppendNewLine(Identation.Inner);
-                Visit(select);
-
-                AppendNewLine(Identation.Outer);
+                this.AppendNewLine(Identation.Inner);
+                this.Visit(select);
+                this.AppendNewLine(Identation.Outer);
 
                 sb.Append(")");
-                sb.Append(" AS ");
+                sb.Append(" "); // Oracle only
                 sb.Append(select.Alias);
                 break;
 
@@ -248,5 +249,27 @@ internal class QueryFormatter : DbExpressionVisitor
         }
 
         return source;
+    }
+
+    private string GetTableName(Type elementType)
+    {
+        var dbSetProperty = _context
+            .GetType()
+            .GetProperties()
+            .Single(p => p.PropertyType == typeof(DbSet<>).MakeGenericType(elementType));
+
+        object? dbSet = dbSetProperty.GetValue(_context)
+            ?? throw new InvalidOperationException("dbSet is null.");
+
+        var tableInfo = dbSet
+            .GetType()
+            .GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy)
+            .Single(f => f.Name == nameof(DbSet<object>._tableInfo))
+            .GetValue(dbSet)
+                ?? throw new InvalidOperationException("tableInfo is null.");
+
+        string tableName = ((TableInfo)tableInfo).Name;
+
+        return tableName;
     }
 }

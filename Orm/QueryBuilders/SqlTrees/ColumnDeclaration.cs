@@ -5,9 +5,9 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OracleOrm.Queries.Expressions;
+namespace OracleOrm;
 
-internal class ColumnDeclaration
+public class ColumnDeclaration
 {
     string name;
     Expression expression;

@@ -1,277 +1,276 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using OracleOrm.Queries.Expressions;
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Data.Common;
+//using System.Linq;
+//using System.Linq.Expressions;
+//using System.Reflection;
+//using System.Text;
+//using System.Threading.Tasks;
 
 
-namespace OracleOrm.Queries.Visitors;
+//namespace OracleOrm.Queries.Visitors;
 
 
-public class DbQueryProvider : QueryProvider
-{
+//public class DbQueryProvider : QueryProvider
+//{
 
-    DbConnection connection;
+//    DbConnection connection;
 
-    public DbQueryProvider(DbConnection connection)
-    {
-        this.connection = connection;
-    }
+//    public DbQueryProvider(DbConnection connection)
+//    {
+//        this.connection = connection;
+//    }
 
-    public override string GetQueryText(Expression expression)
-    {
-        return Translate(expression).CommandText;
-    }
+//    public override string GetQueryText(Expression expression)
+//    {
+//        return Translate(expression).CommandText;
+//    }
 
-    public override object Execute(Expression expression)
-    {
-        TranslateResult result = Translate(expression);
-        Delegate projector = result.Projector.Compile();
+//    public override object Execute(Expression expression)
+//    {
+//        TranslateResult result = Translate(expression);
+//        Delegate projector = result.Projector.Compile();
 
-        DbCommand cmd = connection.CreateCommand();
-        cmd.CommandText = result.CommandText;
-        DbDataReader reader = cmd.ExecuteReader();
+//        DbCommand cmd = connection.CreateCommand();
+//        cmd.CommandText = result.CommandText;
+//        DbDataReader reader = cmd.ExecuteReader();
 
-        Type elementType = expression.Type.GetElementType(); //TypeSystem.GetElementType(expression.Type);
+//        Type elementType = expression.Type.GetElementType(); //TypeSystem.GetElementType(expression.Type);
 
-        return Activator.CreateInstance(
-            typeof(ProjectionReader<>).MakeGenericType(elementType),
-            BindingFlags.Instance | BindingFlags.NonPublic, null,
-            new object[] { reader, projector },
-            null
-        )!;
+//        return Activator.CreateInstance(
+//            typeof(ProjectionReader<>).MakeGenericType(elementType),
+//            BindingFlags.Instance | BindingFlags.NonPublic, null,
+//            new object[] { reader, projector },
+//            null
+//        )!;
 
 
-    }
+//    }
 
-    internal class TranslateResult
-    {
-        internal string CommandText;
-        internal LambdaExpression Projector;
-    }
+//    internal class TranslateResult
+//    {
+//        internal string CommandText;
+//        internal LambdaExpression Projector;
+//    }
 
 
-    private TranslateResult Translate(Expression expression)
-    {
-        expression = Evaluator.PartialEval(expression);
+//    private TranslateResult Translate(Expression expression)
+//    {
+//        expression = Evaluator.PartialEval(expression);
 
 
-        ProjectionExpression proj = (ProjectionExpression)new QueryBinder().Bind(expression);
+//        ProjectionExpression proj = (ProjectionExpression)new QueryBinder().Bind(expression);
 
 
-        string commandText = new QueryFormatter().Format(proj.Source);
+//        string commandText = new QueryFormatter().Format(proj.Source);
 
 
-        LambdaExpression projector = new ProjectionBuilder().Build(proj.Projector);
+//        LambdaExpression projector = new ProjectionBuilder().Build(proj.Projector);
 
 
-        return new TranslateResult { CommandText = commandText, Projector = projector };
+//        return new TranslateResult { CommandText = commandText, Projector = projector };
 
 
-    }
-}
+//    }
+//}
 
 
-public static class Evaluator
-{
-    public static Expression PartialEval(Expression expression, Func<Expression, bool> fnCanBeEvaluated)
-    {
-        return new SubtreeEvaluator(new Nominator(fnCanBeEvaluated).Nominate(expression)).Eval(expression);
-    }
+//public static class Evaluator
+//{
+//    public static Expression PartialEval(Expression expression, Func<Expression, bool> fnCanBeEvaluated)
+//    {
+//        return new SubtreeEvaluator(new Nominator(fnCanBeEvaluated).Nominate(expression)).Eval(expression);
+//    }
 
-    public static Expression PartialEval(Expression expression)
-    {
-        return PartialEval(expression, CanBeEvaluatedLocally);
-    }
+//    public static Expression PartialEval(Expression expression)
+//    {
+//        return PartialEval(expression, CanBeEvaluatedLocally);
+//    }
 
-    private static bool CanBeEvaluatedLocally(Expression expression)
-    {
-        return expression.NodeType != ExpressionType.Parameter;
-    }
+//    private static bool CanBeEvaluatedLocally(Expression expression)
+//    {
+//        return expression.NodeType != ExpressionType.Parameter;
+//    }
 
-    class SubtreeEvaluator : ExpressionVisitor
-    {
-        HashSet<Expression> candidates;
+//    class SubtreeEvaluator : ExpressionVisitor
+//    {
+//        HashSet<Expression> candidates;
 
-        internal SubtreeEvaluator(HashSet<Expression> candidates)
-        {
-            this.candidates = candidates;
-        }
+//        internal SubtreeEvaluator(HashSet<Expression> candidates)
+//        {
+//            this.candidates = candidates;
+//        }
 
-        internal Expression Eval(Expression exp)
-        {
-            return Visit(exp);
-        }
+//        internal Expression Eval(Expression exp)
+//        {
+//            return Visit(exp);
+//        }
 
-        public override Expression Visit(Expression exp)
-        {
+//        public override Expression Visit(Expression exp)
+//        {
 
 
-            if (exp == null)
-            {
+//            if (exp == null)
+//            {
 
 
-                return null;
+//                return null;
 
 
-            }
+//            }
 
 
-            if (candidates.Contains(exp))
-            {
+//            if (candidates.Contains(exp))
+//            {
 
 
-                return Evaluate(exp);
+//                return Evaluate(exp);
 
 
-            }
+//            }
 
 
-            return base.Visit(exp);
+//            return base.Visit(exp);
 
 
-        }
+//        }
 
 
 
 
 
-        private Expression Evaluate(Expression e)
-        {
+//        private Expression Evaluate(Expression e)
+//        {
 
 
-            if (e.NodeType == ExpressionType.Constant)
-            {
+//            if (e.NodeType == ExpressionType.Constant)
+//            {
 
 
-                return e;
+//                return e;
 
 
-            }
+//            }
 
 
-            LambdaExpression lambda = Expression.Lambda(e);
+//            LambdaExpression lambda = Expression.Lambda(e);
 
 
-            Delegate fn = lambda.Compile();
+//            Delegate fn = lambda.Compile();
 
 
-            return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+//            return Expression.Constant(fn.DynamicInvoke(null), e.Type);
 
 
-        }
+//        }
 
 
-    }
+//    }
 
 
-    class Nominator : ExpressionVisitor
-    {
+//    class Nominator : ExpressionVisitor
+//    {
 
 
-        Func<Expression, bool> fnCanBeEvaluated;
+//        Func<Expression, bool> fnCanBeEvaluated;
 
 
-        HashSet<Expression> candidates;
+//        HashSet<Expression> candidates;
 
 
-        bool cannotBeEvaluated;
+//        bool cannotBeEvaluated;
 
 
 
 
 
-        internal Nominator(Func<Expression, bool> fnCanBeEvaluated)
-        {
+//        internal Nominator(Func<Expression, bool> fnCanBeEvaluated)
+//        {
 
 
-            this.fnCanBeEvaluated = fnCanBeEvaluated;
+//            this.fnCanBeEvaluated = fnCanBeEvaluated;
 
 
-        }
+//        }
 
 
 
 
 
-        internal HashSet<Expression> Nominate(Expression expression)
-        {
+//        internal HashSet<Expression> Nominate(Expression expression)
+//        {
 
 
-            candidates = new HashSet<Expression>();
+//            candidates = new HashSet<Expression>();
 
 
-            Visit(expression);
+//            Visit(expression);
 
 
-            return candidates;
+//            return candidates;
 
 
-        }
+//        }
 
 
 
 
 
-        public override Expression Visit(Expression expression)
-        {
+//        public override Expression Visit(Expression expression)
+//        {
 
 
-            if (expression != null)
-            {
+//            if (expression != null)
+//            {
 
 
-                bool saveCannotBeEvaluated = cannotBeEvaluated;
+//                bool saveCannotBeEvaluated = cannotBeEvaluated;
 
 
-                cannotBeEvaluated = false;
+//                cannotBeEvaluated = false;
 
 
-                base.Visit(expression);
+//                base.Visit(expression);
 
 
-                if (!cannotBeEvaluated)
-                {
+//                if (!cannotBeEvaluated)
+//                {
 
 
-                    if (fnCanBeEvaluated(expression))
-                    {
+//                    if (fnCanBeEvaluated(expression))
+//                    {
 
 
-                        candidates.Add(expression);
+//                        candidates.Add(expression);
 
 
-                    }
+//                    }
 
 
-                    else
-                    {
+//                    else
+//                    {
 
 
-                        cannotBeEvaluated = true;
+//                        cannotBeEvaluated = true;
 
 
-                    }
+//                    }
 
 
-                }
+//                }
 
 
-                cannotBeEvaluated |= saveCannotBeEvaluated;
+//                cannotBeEvaluated |= saveCannotBeEvaluated;
 
 
-            }
+//            }
 
 
-            return expression;
+//            return expression;
 
 
-        }
+//        }
 
 
-    }
-}
+//    }
+//}

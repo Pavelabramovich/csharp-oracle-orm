@@ -27,6 +27,4 @@ public abstract class QueryProvider : IQueryProvider
         return (TResult)Execute(expression)!;
     }
     public abstract object? Execute(Expression expression);
-
-    public abstract string GetQueryString(Expression expression);
 }

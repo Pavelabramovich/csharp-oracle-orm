@@ -21,8 +21,9 @@ class Program
 
         //Console.WriteLine(CaseConverter.ToPascalCase("GroupId"));
 
+        int id = 4;
 
-        var res = context.Students.Where(s => s.Id > 1).ToList();
+        var res = context.Students.Where(s => s.Name != "Petya").Select(s => s.Name[0]).ToList();
 
         //context.Students.Clear();
     }

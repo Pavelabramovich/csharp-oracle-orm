@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OracleOrm.Queries.Visitors;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -6,37 +7,30 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-
-
-namespace OracleOrm.Queries.Visitors;
-
+namespace OracleOrm;
 
 internal class QueryBinder : ExpressionVisitor
 {
     ColumnProjector columnProjector;
-
     Dictionary<ParameterExpression, Expression> map;
-
     int aliasCount;
 
 
     internal QueryBinder()
     {
-        columnProjector = new ColumnProjector(CanBeColumn);
+        this.columnProjector = new ColumnProjector(this.CanBeColumn);
     }
-
 
     private bool CanBeColumn(Expression expression)
     {
         return expression.NodeType == (ExpressionType)DbExpressionType.Column;
     }
 
-
     internal Expression Bind(Expression expression)
     {
-        map = new Dictionary<ParameterExpression, Expression>();
+        this.map = new Dictionary<ParameterExpression, Expression>();
 
-        return Visit(expression);
+        return this.Visit(expression);
     }
 
     private static Expression StripQuotes(Expression e)
@@ -51,43 +45,44 @@ internal class QueryBinder : ExpressionVisitor
 
     private string GetNextAlias()
     {
-        return "t" + aliasCount++;
+        return "t" + (aliasCount++);
     }
 
     private ProjectedColumns ProjectColumns(Expression expression, string newAlias, string existingAlias)
     {
-        return columnProjector.ProjectColumns(expression, newAlias, existingAlias);
+        return this.columnProjector.ProjectColumns(expression, newAlias, existingAlias);
     }
 
 
     protected override Expression VisitMethodCall(MethodCallExpression m)
     {
-        if (m.Method.DeclaringType == typeof(Queryable)
+        if (m.Method.DeclaringType == typeof(Queryable) 
             || m.Method.DeclaringType == typeof(Enumerable))
         {
-            switch (m.Method.Name)
+            return m.Method.Name switch
             {
-                case "Where":
-                    return BindWhere(m.Type, m.Arguments[0], (LambdaExpression)StripQuotes(m.Arguments[1]));
-
-                case "Select":
-                    return BindSelect(m.Type, m.Arguments[0], (LambdaExpression)StripQuotes(m.Arguments[1]));
-            }
-
+                "Where" => this.BindWhere(m.Type, m.Arguments[0], (LambdaExpression)StripQuotes(m.Arguments[1])),
+                "Select" => this.BindSelect(m.Type, m.Arguments[0], (LambdaExpression)StripQuotes(m.Arguments[1])),
+                _ => throw new NotSupportedException(string.Format("The method '{0}' is not supported", m.Method.Name)),
+            };
+        }
+        else
+        {
             throw new NotSupportedException(string.Format("The method '{0}' is not supported", m.Method.Name));
         }
 
         return base.VisitMethodCall(m);
     }
 
+
     private Expression BindWhere(Type resultType, Expression source, LambdaExpression predicate)
     {
-        ProjectionExpression projection = (ProjectionExpression)Visit(source);
-        map[predicate.Parameters[0]] = projection.Projector;
-        Expression where = Visit(predicate.Body);
-        string alias = GetNextAlias();
+        ProjectionExpression projection = (ProjectionExpression)this.Visit(source);
+        this.map[predicate.Parameters[0]] = projection.Projector;
+        Expression where = this.Visit(predicate.Body);
+        string alias = this.GetNextAlias();
 
-        ProjectedColumns pc = ProjectColumns(projection.Projector, alias, GetExistingAlias(projection.Source));
+        ProjectedColumns pc = this.ProjectColumns(projection.Projector, alias, GetExistingAlias(projection.Source));
 
         return new ProjectionExpression(
             new SelectExpression(resultType, alias, pc.Columns, projection.Source, where),
@@ -95,16 +90,13 @@ internal class QueryBinder : ExpressionVisitor
         );
     }
 
-
     private Expression BindSelect(Type resultType, Expression source, LambdaExpression selector)
     {
-        ProjectionExpression projection = (ProjectionExpression)Visit(source);
-        map[selector.Parameters[0]] = projection.Projector;
-        Expression expression = Visit(selector.Body);
-
-        string alias = GetNextAlias();
-
-        ProjectedColumns pc = ProjectColumns(expression, alias, GetExistingAlias(projection.Source));
+        ProjectionExpression projection = (ProjectionExpression)this.Visit(source);
+        this.map[selector.Parameters[0]] = projection.Projector;
+        Expression expression = this.Visit(selector.Body);
+        string alias = this.GetNextAlias();
+        ProjectedColumns pc = this.ProjectColumns(expression, alias, GetExistingAlias(projection.Source));
 
         return new ProjectionExpression(
             new SelectExpression(resultType, alias, pc.Columns, projection.Source, null),
@@ -112,25 +104,20 @@ internal class QueryBinder : ExpressionVisitor
         );
     }
 
-
     private static string GetExistingAlias(Expression source)
     {
-        switch ((DbExpressionType)source.NodeType)
+        return (DbExpressionType)source.NodeType switch
         {
-            case DbExpressionType.Select:
-                return ((SelectExpression)source).Alias;
-
-            case DbExpressionType.Table:
-                return ((TableExpression)source).Alias;
-
-            default:
-                throw new InvalidOperationException(string.Format("Invalid source node type '{0}'", source.NodeType));
-        }
+            DbExpressionType.Select => ((SelectExpression)source).Alias,
+            DbExpressionType.Table => ((TableExpression)source).Alias,
+            _ => throw new InvalidOperationException(string.Format("Invalid source node type '{0}'", source.NodeType)),
+        };
     }
 
     private bool IsTable(object value)
     {
         IQueryable q = value as IQueryable;
+
         return q != null && q.Expression.NodeType == ExpressionType.Constant;
     }
 
@@ -138,6 +125,7 @@ internal class QueryBinder : ExpressionVisitor
     {
         IQueryable tableQuery = (IQueryable)table;
         Type rowType = tableQuery.ElementType;
+
         return rowType.Name;
     }
 
@@ -148,11 +136,11 @@ internal class QueryBinder : ExpressionVisitor
 
     private Type GetColumnType(MemberInfo member)
     {
-        FieldInfo fi = member as FieldInfo;
+        PropertyInfo fi = member as PropertyInfo;
 
         if (fi != null)
         {
-            return fi.FieldType;
+            return fi.PropertyType;
         }
 
         PropertyInfo pi = (PropertyInfo)member;
@@ -162,26 +150,30 @@ internal class QueryBinder : ExpressionVisitor
 
     private IEnumerable<MemberInfo> GetMappedMembers(Type rowType)
     {
-        return rowType.GetFields().Cast<MemberInfo>();
+        return rowType.GetProperties().Cast<MemberInfo>();
     }
 
     private ProjectionExpression GetTableProjection(object value)
     {
         IQueryable table = (IQueryable)value;
-        string tableAlias = GetNextAlias();
-        string selectAlias = GetNextAlias();
 
-        List<MemberBinding> bindings = new List<MemberBinding>();
-        List<ColumnDeclaration> columns = new List<ColumnDeclaration>();
+        string tableAlias = this.GetNextAlias();
+        string selectAlias = this.GetNextAlias();
 
-        foreach (MemberInfo mi in GetMappedMembers(table.ElementType))
+        List<MemberBinding> bindings = [];
+        List<ColumnDeclaration> columns = [];
+
+        foreach (MemberInfo mi in this.GetMappedMembers(table.ElementType))
         {
-            string columnName = GetColumnName(mi);
-            Type columnType = GetColumnType(mi);
+            string columnName = this.GetColumnName(mi);
+
+            Type columnType = this.GetColumnType(mi);
             int ordinal = columns.Count;
+
             bindings.Add(Expression.Bind(mi, new ColumnExpression(columnType, selectAlias, columnName, ordinal)));
             columns.Add(new ColumnDeclaration(columnName, new ColumnExpression(columnType, tableAlias, columnName, ordinal)));
         }
+
 
         Expression projector = Expression.MemberInit(Expression.New(table.ElementType), bindings);
         Type resultType = typeof(IEnumerable<>).MakeGenericType(table.ElementType);
@@ -191,16 +183,17 @@ internal class QueryBinder : ExpressionVisitor
                 resultType,
                 selectAlias,
                 columns,
-                new TableExpression(resultType, tableAlias, GetTableName(table)),
+                new TableExpression(resultType, tableAlias, this.GetTableName(table)),
                 null
             ),
+
             projector
         );
     }
 
     protected override Expression VisitConstant(ConstantExpression c)
     {
-        if (IsTable(c.Value))
+        if (this.IsTable(c.Value))
         {
             return GetTableProjection(c.Value);
         }
@@ -212,7 +205,7 @@ internal class QueryBinder : ExpressionVisitor
     {
         Expression e;
 
-        if (map.TryGetValue(p, out e))
+        if (this.map.TryGetValue(p, out e))
         {
             return e;
         }
@@ -222,7 +215,7 @@ internal class QueryBinder : ExpressionVisitor
 
     protected override Expression VisitMember(MemberExpression m)
     {
-        Expression source = Visit(m.Expression);
+        Expression source = this.Visit(m.Expression);
 
         switch (source.NodeType)
         {
@@ -238,6 +231,7 @@ internal class QueryBinder : ExpressionVisitor
                         return assign.Expression;
                     }
                 }
+
                 break;
 
             case ExpressionType.New:
@@ -253,6 +247,7 @@ internal class QueryBinder : ExpressionVisitor
                         }
                     }
                 }
+
                 break;
         }
 
@@ -263,7 +258,6 @@ internal class QueryBinder : ExpressionVisitor
 
         return MakeMemberAccess(source, m.Member);
     }
-
 
     private bool MembersMatch(MemberInfo a, MemberInfo b)
     {
@@ -276,7 +270,6 @@ internal class QueryBinder : ExpressionVisitor
         {
             return a == ((PropertyInfo)b).GetGetMethod();
         }
-
         else if (a is PropertyInfo && b is MethodInfo)
         {
             return ((PropertyInfo)a).GetGetMethod() == b;
@@ -285,18 +278,23 @@ internal class QueryBinder : ExpressionVisitor
         return false;
     }
 
-
     private Expression MakeMemberAccess(Expression source, MemberInfo mi)
     {
-        FieldInfo fi = mi as FieldInfo;
+        PropertyInfo fi = mi as PropertyInfo;
 
         if (fi != null)
         {
-            return Expression.Field(source, fi);
+            return Expression.Property(source, fi);
         }
 
         PropertyInfo pi = (PropertyInfo)mi;
 
         return Expression.Property(source, pi);
     }
+}
+
+internal class TranslateResult
+{
+    internal string CommandText;
+    internal LambdaExpression Projector;
 }

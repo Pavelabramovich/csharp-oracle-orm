@@ -42,19 +42,11 @@ public class Queryable<T> : IQueryable<T>
 
     public IEnumerator<T> GetEnumerator()
     {
-        var res = Provider.Execute(Expression);
-
-        if (res is IEnumerable<ExpandoObject> objects)
-        {
-            return objects.Select(o => QueryMapper.Map<T>(o)).GetEnumerator();
-        }
-        else
-        {
-            throw new NotSupportedException();
-        }
+        return ((IEnumerable<T>)Provider.Execute(Expression)).GetEnumerator();
     }
+
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return GetEnumerator();
+        return ((IEnumerable)Provider.Execute(Expression)).GetEnumerator();
     }
 }

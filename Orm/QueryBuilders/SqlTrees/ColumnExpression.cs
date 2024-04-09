@@ -6,21 +6,27 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-namespace OracleOrm.Queries.Expressions;
+namespace OracleOrm;
 
 
-internal class TableExpression : Expression
+public class ColumnExpression : Expression
 {
     string alias;
     string name;
 
-    internal TableExpression(Type type, string alias, string name)
-        : base((ExpressionType)DbExpressionType.Table, type)
+    int ordinal;
+
+
+    internal ColumnExpression(Type type, string alias, string name, int ordinal)
+        : base((ExpressionType)DbExpressionType.Column, type)
     {
         this.alias = alias;
         this.name = name;
+        this.ordinal = ordinal;
     }
 
     internal string Alias => alias;
     internal string Name => name;
+
+    internal int Ordinal => ordinal;
 }

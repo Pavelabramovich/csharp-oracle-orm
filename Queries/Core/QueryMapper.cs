@@ -12,7 +12,7 @@ using System.Dynamic;
 using System.Reflection.Metadata;
 
 
-namespace OracleOrm;
+namespace OracleOrm.Queries.Core;
 
 
 public static class QueryMapper
@@ -34,14 +34,24 @@ public static class QueryMapper
     private static readonly MethodInfo s_getTypeMethod = typeof(object).GetMethod(nameof(GetType))!;
     private static readonly MethodInfo s_ChangeTypeMethod = typeof(Convert).GetMethod(nameof(Convert.ChangeType), [typeof(object), typeof(Type)])!;
     private static readonly MethodInfo s_ToPascalCaseMethod = typeof(CaseConverter).GetMethod(nameof(CaseConverter.ToPascalCase))!;
+    private static readonly MethodInfo s_createInstanceMethod = typeof(Activator).GetMethod(nameof(Activator.CreateInstance), [typeof(Type), typeof(object[])])!;
 
-    public static T Map<T>(ExpandoObject obj) 
+
+    public static T Map<T>(ExpandoObject obj)
     {
         var map = (ConvertDictionary<T>)_mapperFuncs.GetOrAdd(typeof(T), t => Build<T>());
 
         return map(obj);
     }
 
+    public static object? Map(Type type, ExpandoObject obj)
+    {
+        return typeof(QueryMapper)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(Map) && m.GetParameters().Length == 1)
+            .MakeGenericMethod(type)
+            .Invoke(null, [obj]);
+    }
 
     /*  public static T Build<T>(IDictionary<string, object?> objectProperties)
         {
@@ -55,13 +65,21 @@ public static class QueryMapper
     {
         var dictParam = Expression.Parameter(typeof(IDictionary<string, object?>));
 
-        var newExpr = Expression.New(typeof(T));
+        var typeExpression = Expression.Constant(typeof(T));
 
-        var memberInit = Expression.MemberInit(newExpr, typeof(T)
+        var propsExpressions = typeof(T)
             .GetProperties()
-            .Select(p => Expression.Bind(p, BuildPropertyExpression(dictParam, p))));
+            .Select(p => BuildPropertyExpression(dictParam, p))
+            .Select(expr => Expression.Convert(expr, typeof(object)));
 
-        return Expression.Lambda<ConvertDictionary<T>>(memberInit, dictParam).Compile();
+        var paramsExpression = Expression.NewArrayInit(typeof(object), propsExpressions);
+
+        Console.WriteLine(propsExpressions.Count());
+
+        var createInstanceExpr = Expression.Call(instance: null, s_createInstanceMethod, [typeExpression, paramsExpression]);
+        var convertedExpr = Expression.Convert(createInstanceExpr, typeof(T));
+
+        return Expression.Lambda<ConvertDictionary<T>>(convertedExpr, dictParam).Compile();
     }
 
 

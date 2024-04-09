@@ -5,19 +5,20 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OracleOrm.Core;
+
+namespace OracleOrm;
 
 
-public static class Evaluator
+public class LocalVariablesEvaluater
 {
-    public static Expression PartialEval(Expression expression, Func<Expression, bool> fnCanBeEvaluated)
+    public static Expression Evaluate(Expression expression, Func<Expression, bool> fnCanBeEvaluated)
     {
         return new SubtreeEvaluator(new Nominator(fnCanBeEvaluated).Nominate(expression)).Eval(expression);
     }
 
-    public static Expression PartialEval(Expression expression)
+    public static Expression Evaluate(Expression expression)
     {
-        return PartialEval(expression, Evaluator.CanBeEvaluatedLocally);
+        return Evaluate(expression, CanBeEvaluatedLocally);
     }
 
     private static bool CanBeEvaluatedLocally(Expression expression)
@@ -25,9 +26,10 @@ public static class Evaluator
         return expression.NodeType != ExpressionType.Parameter;
     }
 
-    class SubtreeEvaluator : ExpressionVisitor
+    private class SubtreeEvaluator : ExpressionVisitor
     {
-        private HashSet<Expression> _candidates;
+        private readonly HashSet<Expression> _candidates;
+
 
         internal SubtreeEvaluator(HashSet<Expression> candidates)
         {
@@ -36,7 +38,7 @@ public static class Evaluator
 
         internal Expression Eval(Expression exp)
         {
-            return this.Visit(exp);
+            return Visit(exp);
         }
 
         public override Expression Visit(Expression? exp)
@@ -48,7 +50,7 @@ public static class Evaluator
 
             if (_candidates.Contains(exp))
             {
-                return this.Evaluate(exp);
+                return Evaluate(exp);
             }
 
             return base.Visit(exp);
@@ -70,7 +72,7 @@ public static class Evaluator
     }
 
     private class Nominator : ExpressionVisitor
-    { 
+    {
         private Func<Expression, bool> _fnCanBeEvaluated;
         private HashSet<Expression> _candidates;
 

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using OracleOrm.Dev;
 using System.Text;
+using OracleOrm.Queries.Core;
 
 
 namespace OracleOrm;
@@ -125,7 +126,7 @@ public abstract class OracleDbContext : DbContext
         return objects.Select(obj => QueryMapper.Map<T>(obj));
     }
 
-    private static IEnumerable<ExpandoObject> ReadData(IEnumerable reader)
+    public static IEnumerable<ExpandoObject> ReadData(IEnumerable reader)
     {
         var dataList = new List<ExpandoObject>();
 

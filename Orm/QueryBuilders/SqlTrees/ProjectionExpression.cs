@@ -6,10 +6,10 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-namespace OracleOrm.Queries.Expressions;
+namespace OracleOrm;
 
 
-internal class ProjectionExpression : Expression
+public class ProjectionExpression : Expression
 {
     SelectExpression source;
     Expression projector;

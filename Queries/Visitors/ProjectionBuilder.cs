@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using OracleOrm.Queries.Expressions;
+using OracleOrm;
 
 
 namespace OracleOrm.Queries.Visitors;
@@ -40,7 +40,7 @@ internal class ProjectionBuilder : DbExpressionVisitor
         return Expression.Lambda(body, row);
     }
 
-    protected override Expression VisitColumn(ColumnExpression column)
+    public override Expression VisitColumn(ColumnExpression column)
     {
         return Expression.Convert(Expression.Call(row, miGetValue, Expression.Constant(column.Ordinal)), column.Type);
     }

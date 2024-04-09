@@ -5,13 +5,12 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
-using OracleOrm.Queries.Expressions;
 
 
-namespace OracleOrm.Queries.Visitors;
 
+namespace OracleOrm;
 
-internal class DbExpressionVisitor : ExpressionVisitor
+public class DbExpressionVisitor : ExpressionVisitor
 {
     public override Expression Visit(Expression? exp)
     {
@@ -20,23 +19,14 @@ internal class DbExpressionVisitor : ExpressionVisitor
             return null;
         }
 
-        switch ((DbExpressionType)exp.NodeType)
+        return (DbExpressionType)exp.NodeType switch
         {
-            case DbExpressionType.Table:
-                return VisitTable((TableExpression)exp);
-
-            case DbExpressionType.Column:
-                return VisitColumn((ColumnExpression)exp);
-
-            case DbExpressionType.Select:
-                return VisitSelect((SelectExpression)exp);
-
-            case DbExpressionType.Projection:
-                return VisitProjection((ProjectionExpression)exp);
-
-            default:
-                return base.Visit(exp);
-        }
+            DbExpressionType.Table => VisitTable((TableExpression)exp),
+            DbExpressionType.Column => VisitColumn((ColumnExpression)exp),
+            DbExpressionType.Select => VisitSelect((SelectExpression)exp),
+            DbExpressionType.Projection => VisitProjection((ProjectionExpression)exp),
+            _ => base.Visit(exp),
+        };
     }
 
 
@@ -46,7 +36,7 @@ internal class DbExpressionVisitor : ExpressionVisitor
     }
 
 
-    protected virtual Expression VisitColumn(ColumnExpression column)
+    public virtual Expression VisitColumn(ColumnExpression column)
     {
         return column;
     }
@@ -75,7 +65,7 @@ internal class DbExpressionVisitor : ExpressionVisitor
     }
 
 
-    protected virtual Expression VisitProjection(ProjectionExpression proj)
+    public virtual Expression VisitProjection(ProjectionExpression proj)
     {
         SelectExpression source = (SelectExpression)Visit(proj.Source);
         Expression projector = Visit(proj.Projector);
@@ -89,7 +79,7 @@ internal class DbExpressionVisitor : ExpressionVisitor
     }
 
 
-    protected ReadOnlyCollection<ColumnDeclaration> VisitColumnDeclarations(ReadOnlyCollection<ColumnDeclaration> columns)
+    public ReadOnlyCollection<ColumnDeclaration> VisitColumnDeclarations(ReadOnlyCollection<ColumnDeclaration> columns)
     {
         List<ColumnDeclaration> alternate = null;
 

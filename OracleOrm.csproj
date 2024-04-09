@@ -13,4 +13,8 @@
     <PackageReference Include="Oracle.EntityFrameworkCore" Version="8.21.121" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Queries\Expressions\" />
+  </ItemGroup>
+
 </Project>
