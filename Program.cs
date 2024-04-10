@@ -18,11 +18,40 @@ class Program
     {
         DevContext context = new();
 
-        int id = 4;
+        //var res0 = context.Students
+        //    .Select(g => new { Id = g.Id, Arr = context.Students.ToList() })
+        //    .ToList();
 
-        var res = context.Students
-            .Select(s => s)
-            .Where(s => s.Name != "Petya")
-            .Select(s => s.Name[s.Id - s.Id]).ToList();
+        //var res1 = context.Students
+        //    .Select(s => s)
+        //    .Where(s => s.Name != "Petya")
+        //    .Select(s => s.Name)
+        //    .ToList();
+
+        //var res2 = context.Students
+        //    .Select(s => new { s.Name, Groups = "13" })
+        //    .ToList();
+
+
+        var res101 = from c in context.Students
+                     where c.Name == "Petya"
+                     select new
+                     {
+                         Name = "lolal",
+
+                         Orders = from o in context.Students
+
+                                  where o.Id == c.Id
+
+                                  select o
+                        };
+
+                 
+        var res3 = context.Groups
+            .Where(g => g.Name != "1")
+            .Select(g => new { Id = g.Id, Arr = context.Students.ToList() })
+            .ToList();
+
+        Console.ReadKey();
     }
 }

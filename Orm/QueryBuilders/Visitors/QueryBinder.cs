@@ -91,7 +91,24 @@ internal class QueryBinder : ExpressionVisitor
     {
         ProjectionExpression projection = (ProjectionExpression)this.Visit(source);
         this.map[selector.Parameters[0]] = projection.Projector;
-        Expression expression = this.Visit(selector.Body);
+
+        Expression expression;
+        try
+        {
+             expression = this.Visit(selector.Body);
+        }
+        catch (Exception exception)
+        {
+            var res = selector.Compile();
+
+            var l = res.DynamicInvoke("123");
+
+            var d = 0;
+            var t = typeof(Exception);
+            var r = selector.Body.Type;
+            throw null;
+        }
+
         string alias = this.GetNextAlias();
         ProjectedColumns pc = this.ProjectColumns(expression, alias, GetExistingAlias(projection.Source));
 
@@ -316,7 +333,7 @@ internal class QueryBinder : ExpressionVisitor
     }
 }
 
-internal class TranslateResult
+public class TranslateResult
 {
     internal string CommandText;
     internal LambdaExpression Projector;

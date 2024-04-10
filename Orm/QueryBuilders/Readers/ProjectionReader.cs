@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OracleOrm.Core;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -15,9 +16,9 @@ internal class ProjectionReader<T> : IEnumerable<T>, IEnumerable
 {
     Enumerator enumerator;
 
-    internal ProjectionReader(DbDataReader reader, Func<ProjectionRow, T> projector)
+    internal ProjectionReader(DbDataReader reader, Func<ProjectionRow, T> projector, IQueryProvider provider)
     {
-        enumerator = new Enumerator(reader, projector);
+        enumerator = new Enumerator(reader, projector, provider);
     }
 
     public IEnumerator<T> GetEnumerator()
@@ -45,11 +46,13 @@ internal class ProjectionReader<T> : IEnumerable<T>, IEnumerable
         T current;
 
         Func<ProjectionRow, T> projector;
+        IQueryProvider provider;
 
-        internal Enumerator(DbDataReader reader, Func<ProjectionRow, T> projector)
+        internal Enumerator(DbDataReader reader, Func<ProjectionRow, T> projector, IQueryProvider provider)
         {
             this.reader = reader;
             this.projector = projector;
+            this.provider = provider;
         }
 
         public override object GetValue(int index)
@@ -83,9 +86,6 @@ internal class ProjectionReader<T> : IEnumerable<T>, IEnumerable
         {
             if (reader.Read())
             {
-                var d = projector(this);
-
-
                 current = projector(this);
 
                 return true;
@@ -102,9 +102,39 @@ internal class ProjectionReader<T> : IEnumerable<T>, IEnumerable
             reader.Dispose();
         }
 
-        public override IEnumerable<T1> ExecuteSubQuery<T1>(LambdaExpression query)
+        public override IEnumerable<E> ExecuteSubQuery<E>(LambdaExpression query)
         {
-            throw new NotImplementedException();
+            ProjectionExpression projection = (ProjectionExpression)new Replacer().Replace(query.Body, query.Parameters[0], Expression.Constant(this));
+
+            projection = (ProjectionExpression)LocalVariablesEvaluater.Evaluate(projection, CanEvaluateLocally);
+            IEnumerable<E> result = (IEnumerable<E>)this.provider.Execute(projection);
+            List<E> list = new List<E>(result);
+
+            if (typeof(IQueryable<E>).IsAssignableFrom(query.Body.Type))
+            {
+                return list.AsQueryable();
+            }
+
+            return list;
         }
+
+        private static bool CanEvaluateLocally(Expression expression)
+        {
+            if (expression.NodeType == ExpressionType.Parameter ||
+                expression.NodeType.IsDbExpression())
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+}
+
+public static class ExpressionTypeExtension
+{
+    public static bool IsDbExpression(this ExpressionType expressionType)
+    {
+        return (int)expressionType >= 0;
     }
 }

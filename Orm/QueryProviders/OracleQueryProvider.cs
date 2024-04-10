@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using OracleOrm.Core;
 
 
 namespace OracleOrm;
@@ -28,11 +29,16 @@ public class OracleQueryProvider : QueryProvider
 
     public override object Execute(Expression expression)
     {
-        TranslateResult result = Translate(expression);
-        Delegate projector = result.Projector.Compile();
+        return this.Execute(this.Translate(expression));
+    }
+
+    public object Execute(TranslateResult query)
+    {
+       // TranslateResult result = Translate(expression);
+        Delegate projector = query.Projector.Compile();
 
         var command = _context.Database.GetDbConnection().CreateCommand();
-        command.CommandText = result.CommandText;
+        command.CommandText = query.CommandText;
 
         if (command.Connection is null)
             throw new InvalidOperationException("Can not create command with valid connection.");
@@ -40,38 +46,53 @@ public class OracleQueryProvider : QueryProvider
         if (command.Connection.State != ConnectionState.Open)
             command.Connection.Open();
 
-        command.CommandText = result.CommandText;
+        command.CommandText = query.CommandText;
 
         DbDataReader reader = command.ExecuteReader();
 
 
-        Type elementType = TypeSystem.GetElementType(expression.Type);
+        Type elementType = TypeSystem.GetElementType(query.Projector.Body.Type);
 
         return Activator.CreateInstance(
             typeof(ProjectionReader<>).MakeGenericType(elementType),
             BindingFlags.Instance | BindingFlags.NonPublic, null,
-            [reader, projector],
+            [reader, projector, this],
             null
         )!;
     }
 
 
+    //private TranslateResult Translate(Expression expression)
+    //{
+    //    expression = LocalVariablesEvaluater.Evaluate(expression);
+
+    //    ProjectionExpression proj = (ProjectionExpression)new QueryBinder().Bind(expression);
+    //    string commandText = new QueryFormatter(_context).Format(proj.Source);
+    //    LambdaExpression projector = new ProjectionBuilder().Build(proj.Projector, null);
+
+    //  //  var convertExpression = Expression.Call(instance: null, s_ChangeTypeMethod, projector, Expression.Constant(property.PropertyType));
+
+    // //   return Expression.Convert(convertExpression, property.PropertyType);
+
+
+    //    return new TranslateResult { CommandText = commandText, Projector = projector };
+    //}
+
     private TranslateResult Translate(Expression expression)
     {
-        expression = LocalVariablesEvaluater.Evaluate(expression);
+        ProjectionExpression projection = expression as ProjectionExpression;
 
-        ProjectionExpression proj = (ProjectionExpression)new QueryBinder().Bind(expression);
-        string commandText = new QueryFormatter(_context).Format(proj.Source);
-        LambdaExpression projector = new ProjectionBuilder().Build(proj.Projector);
+        if (projection == null)
+        {
+            expression = Evaluator.PartialEval(expression);
+            projection = (ProjectionExpression)new QueryBinder().Bind(expression);
+        }
 
-      //  var convertExpression = Expression.Call(instance: null, s_ChangeTypeMethod, projector, Expression.Constant(property.PropertyType));
-
-     //   return Expression.Convert(convertExpression, property.PropertyType);
-
+        string commandText = new QueryFormatter(_context).Format(projection.Source);
+        LambdaExpression projector = new ProjectionBuilder().Build(projection.Projector, projection.Source.Alias);
 
         return new TranslateResult { CommandText = commandText, Projector = projector };
     }
-
 
     //public override object? Execute(Expression expression)
     //{

@@ -11,7 +11,11 @@ internal static class TypeSystem
     internal static Type GetElementType(Type seqType)
     {
         Type ienum = FindIEnumerable(seqType);
-        if (ienum == null) return seqType;
+
+        if (ienum == null) 
+            return seqType;
+
+        // return seqType;
         return ienum.GetGenericArguments()[0];
     }
 

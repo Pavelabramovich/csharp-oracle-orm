@@ -14,5 +14,6 @@ internal enum DbExpressionType
     Column,
     Select,
     Projection,
-    FunctionCalling
+    FunctionCalling,
+    Join
 }
