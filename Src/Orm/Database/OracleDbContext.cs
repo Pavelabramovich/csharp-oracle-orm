@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿//using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,12 +11,15 @@ using System.Reflection;
 using OracleOrm.Dev;
 using System.Text;
 using OracleOrm.Queries.Core;
+//using Oracle.ManagedDataAccess.Client;
+using System.Data.OracleClient;
+using System.Data.Common;
 
 
 namespace OracleOrm;
 
 
-public abstract class OracleDbContext : DbContext
+public abstract class OracleDbContext //: DbContext
 {
     internal abstract string Protocol { get; } 
     internal abstract string Host { get; } 
@@ -25,7 +28,7 @@ public abstract class OracleDbContext : DbContext
     internal abstract string SchemaName { get; } 
     internal abstract string SchemaPassword { get; } 
 
-    protected string ConnectionString => $"""
+    private string ConnectionString => $"""
         Data Source=
         (
             DESCRIPTION=
@@ -41,9 +44,13 @@ public abstract class OracleDbContext : DbContext
         Password={SchemaPassword};
         """;
 
+    public OracleConnection Connection { get; }
+
 
     public OracleDbContext()
     {
+        Connection = new OracleConnection(ConnectionString);
+
         var sets = GetType()
             .GetProperties()
             .Where(x => x.PropertyType is { IsConstructedGenericType: true } genProp && genProp.GetGenericTypeDefinition() == typeof(DbSet<>));
@@ -52,17 +59,46 @@ public abstract class OracleDbContext : DbContext
         {
             set.SetValue(this, CreateSet(set.PropertyType.GetGenericArguments()[0]));
         }
+
+        
     }
 
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        optionsBuilder.UseOracle(this.ConnectionString);
-    }
+    //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    //{
+    //    optionsBuilder.UseOracle(this.ConnectionString);
+    //}
 
     public IEnumerable<ExpandoObject> ExecuteQuery(string query)
     {
-        using var command = this.Database.GetDbConnection().CreateCommand();
+        //using (OracleConnection connection = new OracleConnection(connectionString))
+        //{
+        //    connection.Open();
+
+        //    string sqlQuery = "SELECT * FROM your_table";
+        //    using (OracleCommand command = new OracleCommand(sqlQuery, connection))
+        //    {
+        //        using (OracleDataReader reader = command.ExecuteReader())
+        //        {
+        //            while (reader.Read())
+        //            {
+        //                // Обработка результатов запроса
+        //            }
+        //        }
+        //    }
+        //}
+
+
+
+
+
+
+
+      //  using var command = this.Database.GetDbConnection().CreateCommand();
+
+     //   using var connection = new OracleConnection(ConnectionString);
+
+        using var command = new OracleCommand(query, Connection);
         command.CommandText = query;
 
         if (command.Connection is null)
@@ -74,6 +110,15 @@ public abstract class OracleDbContext : DbContext
         IEnumerable<ExpandoObject> dataRows;
 
         using var dataReader = command.ExecuteReader();
+
+    //    List<object> data = new List<object>();
+
+
+
+
+
+
+
         dataRows = ReadData(dataReader);
 
         if (command.Connection.State == ConnectionState.Open)
@@ -96,14 +141,21 @@ public abstract class OracleDbContext : DbContext
     }
     public IEnumerable<T> ExecuteQuery<T>(string query)
     {
+        var t = ExecuteQuery(query).ToList();
+
         return ExecuteQuery(query).Select(obj => QueryMapper.Map<T>(obj));
     }
 
 
     public async Task<IEnumerable<ExpandoObject>> ExecuteQueryAsync(string query)
     {
-        await using var command = this.Database.GetDbConnection().CreateCommand();
+       // using var connection = new OracleConnection(ConnectionString);
+
+        await using var command = new OracleCommand(query, Connection);
         command.CommandText = query;
+
+        //await using var command = this.Database.GetDbConnection().CreateCommand();
+        //command.CommandText = query;
 
         if (command.Connection is null)
             throw new InvalidOperationException("Can not create command with valid connection.");
@@ -111,7 +163,7 @@ public abstract class OracleDbContext : DbContext
         if (command.Connection.State != ConnectionState.Open)
             command.Connection.Open();
 
-        await using var dataReader = await command.ExecuteReaderAsync();
+        using var dataReader = await command.ExecuteReaderAsync();
         var dataRow = ReadData(dataReader);
 
         if (command.Connection.State == ConnectionState.Open)
@@ -126,24 +178,51 @@ public abstract class OracleDbContext : DbContext
         return objects.Select(obj => QueryMapper.Map<T>(obj));
     }
 
-    public static IEnumerable<ExpandoObject> ReadData(IEnumerable reader)
+    public static IEnumerable<ExpandoObject> ReadData(DbDataReader reader)
     {
+        if (!reader.HasRows)
+            return [];
+
         var dataList = new List<ExpandoObject>();
 
-        foreach (var item in reader)
+        while (reader.Read())
         {
             ExpandoObject dbRow = new();
 
-            foreach (PropertyDescriptor propertyDescriptor in TypeDescriptor.GetProperties(item))
+            for (int i = 0; i < reader.FieldCount; i++)
             {
-                object? obj = propertyDescriptor.GetValue(item);
-                string colName = propertyDescriptor.Name;
+                string colName = reader.GetName(i);
+                object value = reader.GetValue(i);
 
-                (dbRow as IDictionary<string, object?>)[colName] = obj;
+                (dbRow as IDictionary<string, object?>)[colName] = value;
             }
+
+            //foreach (PropertyDescriptor propertyDescriptor in TypeDescriptor.GetProperties(reader))
+            //{
+            //    object? obj = propertyDescriptor.GetValue(reader);
+            //    string colName = propertyDescriptor.Name;
+
+                
+            //}
 
             dataList.Add(dbRow);
         }
+
+
+        //foreach (var item in reader)
+        //{
+        //    ExpandoObject dbRow = new();
+
+        //    foreach (PropertyDescriptor propertyDescriptor in TypeDescriptor.GetProperties(item))
+        //    {
+        //        object? obj = propertyDescriptor.GetValue(item);
+        //        string colName = propertyDescriptor.Name;
+
+        //        (dbRow as IDictionary<string, object?>)[colName] = obj;
+        //    }
+
+        //    dataList.Add(dbRow);
+        //}
 
         return dataList;
     }
@@ -161,5 +240,10 @@ public abstract class OracleDbContext : DbContext
     private DbSet<T> CreateSet<T>()
     {
         return new DbSet<T>(this);
+    }
+
+    ~OracleDbContext()
+    {
+        Connection.Dispose();
     }
 }

@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
+﻿//using Microsoft.EntityFrameworkCore;
+//using Microsoft.EntityFrameworkCore.Query;
 using OracleOrm.Dev;
 using OracleOrm.Queries.Visitors;
 using System;
@@ -9,6 +9,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Data.OracleClient;
 
 namespace OracleOrm;
 
@@ -78,15 +79,15 @@ internal class QueryBinder : ExpressionVisitor
         var method = methodCallExpr.Method;
         method = method.IsGenericMethod ? method.GetGenericMethodDefinition() : method;
 
-        if (method == QueryableMethods.Select)
+        if (method.Name == "Select")
         {
             return BindSelect(methodCallExpr.Type, methodCallExpr.Arguments[0], (LambdaExpression)StripQuotes(methodCallExpr.Arguments[1]));
         }
-        else if (method == QueryableMethods.Where)
+        else if (method.Name == "Where")
         {
             return BindWhere(methodCallExpr.Type, methodCallExpr.Arguments[0], (LambdaExpression)StripQuotes(methodCallExpr.Arguments[1]));
         }
-        else if (method == QueryableMethods.Join)
+        else if (method.Name == "Join")
         {
             return this.BindJoin(
                 methodCallExpr.Type, methodCallExpr.Arguments[0], methodCallExpr.Arguments[1],

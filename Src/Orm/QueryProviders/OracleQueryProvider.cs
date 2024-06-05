@@ -7,8 +7,10 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using OracleOrm.Core;
+//using Microsoft.EntityFrameworkCore;
+//using Oracle.ManagedDataAccess.Client;
+//using OracleOrm.Core;
+using System.Data.OracleClient;
 
 
 namespace OracleOrm;
@@ -37,8 +39,15 @@ public class OracleQueryProvider : QueryProvider
        // TranslateResult result = Translate(expression);
         Delegate projector = query.Projector.Compile();
 
-        var command = _context.Database.GetDbConnection().CreateCommand();
-        command.CommandText = query.CommandText;
+        //using var command = _context.Database.GetDbConnection().CreateCommand();
+        //command.CommandText = query.CommandText;
+
+     //   using var connection = new OracleConnection(_context.ConnectionString);
+
+        var command = new OracleCommand(query.CommandText, _context.Connection);
+    //    command.CommandText = query;
+
+
 
         if (command.Connection is null)
             throw new InvalidOperationException("Can not create command with valid connection.");

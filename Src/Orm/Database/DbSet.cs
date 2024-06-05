@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
+﻿//using Microsoft.EntityFrameworkCore.Metadata;
+//using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Linq.Expressions;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -105,8 +105,17 @@ public class DbSet<T> : Queryable<T>
 
         string tableName = CaseConverter.Plurarize(typeof(T).Name);
 
-        var tableAlreadyExists = _context.ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
-            .Single();
+        //var tableAlreadyExists = _context
+        //    .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
+        //    .Single();
+
+        var t = _context
+         .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
+        .ToList();
+
+        var tableAlreadyExists = _context
+          .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
+          .Single();
 
         List<string> fields = [];
 
