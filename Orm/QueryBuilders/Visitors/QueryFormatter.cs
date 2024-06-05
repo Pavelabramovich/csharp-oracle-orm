@@ -11,19 +11,24 @@ namespace OracleOrm;
 internal class QueryFormatter : DbExpressionVisitor
 {
     private OracleDbContext _context;
-    StringBuilder sb;
+    private readonly StringBuilder sb;
 
     int indent = 2;
     int depth;
 
-    internal QueryFormatter(OracleDbContext context)
+    bool monkeyPatch;
+
+    internal QueryFormatter(OracleDbContext context, bool monkeyPatch = false)
     {
         _context = context;
+        sb = new StringBuilder();
+
+        this.monkeyPatch = monkeyPatch;
     }
 
     internal string Format(Expression expression)
     {
-        this.sb = new StringBuilder();
+        sb.Clear();
         this.Visit(expression);
 
         Console.WriteLine(sb.ToString());
@@ -141,6 +146,19 @@ internal class QueryFormatter : DbExpressionVisitor
         return b;
     }
 
+    protected override Expression VisitParameter(ParameterExpression node)
+    {
+        return base.VisitParameter(node);
+    }
+
+    protected override Expression VisitMember(MemberExpression node)
+    {
+        if (monkeyPatch)
+            sb.Append($" {CaseConverter.ToSnakeCase(node.Member.Name)} ");
+
+        return base.VisitMember(node);
+    }
+
     protected override Expression VisitConstant(ConstantExpression c)
     {
         if (c.Value == null)
@@ -184,6 +202,12 @@ internal class QueryFormatter : DbExpressionVisitor
         sb.Append(CaseConverter.ToSnakeCase(column.Name));
 
         return column;
+    }
+
+    protected override Expression VisitSubQuery(SubQueryExpression subQuery)
+    {
+        Console.WriteLine("LOLOLOL");
+        return base.VisitSubQuery(subQuery);
     }
 
     protected override Expression VisitSelect(SelectExpression select)
@@ -250,6 +274,10 @@ internal class QueryFormatter : DbExpressionVisitor
                 sb.Append(select.Alias);
                 break;
 
+            case DbExpressionType.Join:
+                this.VisitJoin((JoinExpression)source);
+                break;
+
             default:
                 throw new InvalidOperationException("Select source is not valid type");
         }
@@ -259,6 +287,16 @@ internal class QueryFormatter : DbExpressionVisitor
 
     public override Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
     {
+        if (funcCalling is SubQueryExpression subQuery)
+        {
+            string sql = subQuery.Sql;
+
+            sb.Append(sql);
+
+            return funcCalling;
+        }
+
+
         var method = funcCalling.Method;
         var instance = funcCalling.Instance;
         var @params = funcCalling.Params.ToArray();
@@ -272,6 +310,10 @@ internal class QueryFormatter : DbExpressionVisitor
 
             CreateFunctionCallingString("SUBSTR", [@string, indexPlusOne, indexPlusOne]);
             return funcCalling;
+        }
+        else if (method.Name == "Exists")
+        {
+            throw new NotImplementedException();
         }
         else
         {
@@ -296,6 +338,44 @@ internal class QueryFormatter : DbExpressionVisitor
             sb.Append(')');
         }
     }
+
+    protected override Expression VisitJoin(JoinExpression join)
+    {
+
+        this.VisitSource(join.Left);
+
+        this.AppendNewLine(Identation.Same);
+
+        switch (join.Join)
+        {
+            case JoinType.CrossJoin:
+                sb.Append("CROSS JOIN ");
+                break;
+
+            case JoinType.InnerJoin:
+                sb.Append("INNER JOIN ");
+                break;
+
+            case JoinType.CrossApply:
+                sb.Append("CROSS APPLY ");
+                break;
+        }
+
+        this.VisitSource(join.Right);
+
+        if (join.Condition != null)
+        {
+            this.AppendNewLine(Identation.Inner);
+
+            sb.Append("ON ");
+            this.Visit(join.Condition);
+            this.AppendNewLine(Identation.Outer);
+        }
+
+        return join;
+    }
+
+
 
     private string GetTableName(Type elementType)
     {

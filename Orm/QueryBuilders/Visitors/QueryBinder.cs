@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore.Query;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
+using OracleOrm.Dev;
 using OracleOrm.Queries.Visitors;
 using System;
 using System.Collections.Generic;
@@ -16,10 +18,12 @@ internal class QueryBinder : ExpressionVisitor
     Dictionary<ParameterExpression, Expression> map;
     int aliasCount;
 
+    OracleDbContext _context;
 
-    internal QueryBinder()
+    internal QueryBinder(OracleDbContext context)
     {
         this.columnProjector = new ColumnProjector(this.CanBeColumn);
+        _context = context;
     }
 
     private bool CanBeColumn(Expression expression)
@@ -55,6 +59,20 @@ internal class QueryBinder : ExpressionVisitor
     }
 
 
+    public Expression VisitMc(LambdaExpression LambdaExpr)
+    {
+        var qb = new QueryBinder(_context);
+        qb.map = [];
+        
+
+        ProjectionExpression projection = (ProjectionExpression)qb.Visit(LambdaExpr.Body);
+        qb.map[LambdaExpr.Parameters[0]] = projection.Projector;
+
+        var res = qb.Visit(LambdaExpr);
+
+        return res;
+    }
+
     protected override Expression VisitMethodCall(MethodCallExpression methodCallExpr)
     {
         var method = methodCallExpr.Method;
@@ -68,11 +86,53 @@ internal class QueryBinder : ExpressionVisitor
         {
             return BindWhere(methodCallExpr.Type, methodCallExpr.Arguments[0], (LambdaExpression)StripQuotes(methodCallExpr.Arguments[1]));
         }
+        else if (method == QueryableMethods.Join)
+        {
+            return this.BindJoin(
+                methodCallExpr.Type, methodCallExpr.Arguments[0], methodCallExpr.Arguments[1],
+
+                (LambdaExpression)StripQuotes(methodCallExpr.Arguments[2]),
+                (LambdaExpression)StripQuotes(methodCallExpr.Arguments[3]),
+                (LambdaExpression)StripQuotes(methodCallExpr.Arguments[4])
+            );
+        }
+
         else if (method == ParsableMethods.StringIndexing)
         {
             return BindMethodCalling(method, methodCallExpr);
         }
+        else if (method.Name == "Exists")
+        {
+            var predicate = methodCallExpr.Arguments[0];
 
+            var qf = new QueryFormatter(_context, monkeyPatch: true);
+
+            string whereClause = qf.Format(predicate);
+
+            var table = methodCallExpr.Object.Type.GetGenericArguments();
+
+            string tableName = table[0].Name + "s";
+
+            string sql = $"""EXISTS (SELECT * FROM {tableName} WHERE {whereClause})""";
+
+            return BindSubQuery(method, methodCallExpr, sql);
+        }
+        else if (method.Name == "NotExists")
+        {
+            var predicate = methodCallExpr.Arguments[0];
+
+            var qf = new QueryFormatter(_context, monkeyPatch: true);
+
+            string whereClause = qf.Format(predicate);
+
+            var table = methodCallExpr.Object.Type.GetGenericArguments();
+
+            string tableName = table[0].Name + "s";
+
+            string sql = $"""NOT EXISTS (SELECT * FROM {tableName} WHERE {whereClause})""";
+
+            return BindSubQuery(method, methodCallExpr, sql);
+        }
 
         //else
         //{
@@ -99,14 +159,8 @@ internal class QueryBinder : ExpressionVisitor
         }
         catch (Exception exception)
         {
-            var res = selector.Compile();
-
-            var l = res.DynamicInvoke("123");
-
-            var d = 0;
-            var t = typeof(Exception);
-            var r = selector.Body.Type;
-            throw null;
+            Console.WriteLine("CATCH!!!");
+            throw;
         }
 
         string alias = this.GetNextAlias();
@@ -133,12 +187,42 @@ internal class QueryBinder : ExpressionVisitor
         );
     }
 
+    protected virtual Expression BindJoin(Type resultType, Expression outerSource, Expression innerSource, LambdaExpression outerKey, LambdaExpression innerKey, LambdaExpression resultSelector)
+    {
+        ProjectionExpression outerProjection = (ProjectionExpression)this.Visit(outerSource);
+        ProjectionExpression innerProjection = (ProjectionExpression)this.Visit(innerSource);
+        this.map[outerKey.Parameters[0]] = outerProjection.Projector;
+
+        Expression outerKeyExpr = this.Visit(outerKey.Body);
+        this.map[innerKey.Parameters[0]] = innerProjection.Projector;
+        Expression innerKeyExpr = this.Visit(innerKey.Body);
+
+        this.map[resultSelector.Parameters[0]] = outerProjection.Projector;
+        this.map[resultSelector.Parameters[1]] = innerProjection.Projector;
+
+        Expression resultExpr = this.Visit(resultSelector.Body);
+        JoinExpression join = new JoinExpression(resultType, JoinType.InnerJoin, outerProjection.Source, innerProjection.Source, Expression.Equal(outerKeyExpr, innerKeyExpr));
+
+        string alias = this.GetNextAlias();
+        ProjectedColumns pc = this.ProjectColumns(resultExpr, alias, outerProjection.Source.Alias);
+
+        return new ProjectionExpression(
+            new SelectExpression(resultType, alias, pc.Columns, join, null),
+            pc.Projector
+        );
+
+    }
+
+
+
     private Expression BindMethodCalling(MethodInfo method, MethodCallExpression source)
     {
-
-
-
         return new FunctionCallingExpression(method, Visit(source.Object), source.Arguments.Select(arg => Visit(arg)));
+    }
+
+    private Expression BindSubQuery(MethodInfo method, MethodCallExpression source, string sql)
+    {
+        return new SubQueryExpression(method, Visit(source.Object), source.Arguments.Select(arg => Visit(arg)), sql);
     }
 
     private static string GetExistingAlias(Expression source)
@@ -337,4 +421,10 @@ public class TranslateResult
 {
     internal string CommandText;
     internal LambdaExpression Projector;
+}
+
+
+public class DdlTranslationResult : TranslateResult
+{
+    public string Ddl { get; set; }
 }

@@ -84,8 +84,26 @@ public class OracleQueryProvider : QueryProvider
 
         if (projection == null)
         {
-            expression = Evaluator.PartialEval(expression);
-            projection = (ProjectionExpression)new QueryBinder().Bind(expression);
+            expression = LocalVariablesEvaluater.Evaluate(expression);
+
+            Expression result = new QueryBinder(_context).Bind(expression);
+
+            //if (result is SubQueryExpression subQuery)
+            //{
+
+
+            //    Expression<Func<DbSet<object>, bool>> expr = dbSet => true;
+
+            //    var p1 = Expression.Lambda<Func<DbSet<object>, bool>>(expr.Body, []); 
+
+
+            //    return new TranslateResult { CommandText = subQuery.Sql, Projector = new Expression<Func<int, int>>(a => 3)}
+
+            //    return new DdlTranslationResult() { Ddl = subQuery.Sql };
+            //}
+
+
+            projection = (ProjectionExpression)new QueryBinder(_context).Bind(expression);
         }
 
         string commandText = new QueryFormatter(_context).Format(projection.Source);

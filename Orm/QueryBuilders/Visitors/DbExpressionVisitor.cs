@@ -26,6 +26,8 @@ public class DbExpressionVisitor : ExpressionVisitor
             DbExpressionType.Select => VisitSelect((SelectExpression)expr),
             DbExpressionType.Projection => VisitProjection((ProjectionExpression)expr),
             DbExpressionType.FunctionCalling => VisitFunctionCalling((FunctionCallingExpression)expr),
+            DbExpressionType.Join => VisitJoin((JoinExpression)expr),
+            DbExpressionType.SubQuery => VisitSubQuery((SubQueryExpression)expr), 
             _ => base.Visit(expr),
         };
     }
@@ -36,10 +38,35 @@ public class DbExpressionVisitor : ExpressionVisitor
         return table;
     }
 
+    protected virtual Expression VisitSubQuery(SubQueryExpression subQuery)
+    {
+        return subQuery;
+    }
+
 
     public virtual Expression VisitColumn(ColumnExpression column)
     {
         return column;
+    }
+
+    protected virtual Expression VisitJoin(JoinExpression join)
+    {
+
+        Expression left = this.Visit(join.Left);
+
+        Expression right = this.Visit(join.Right);
+
+        Expression condition = this.Visit(join.Condition);
+
+        if (left != join.Left || right != join.Right || condition != join.Condition)
+        {
+
+            return new JoinExpression(join.Type, join.Join, left, right, condition);
+
+        }
+
+        return join;
+
     }
 
 

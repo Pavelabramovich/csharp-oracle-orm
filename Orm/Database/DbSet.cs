@@ -1,4 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
+﻿using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using System.Linq.Expressions;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
 
 namespace OracleOrm;
@@ -38,6 +42,59 @@ public class DbSet<T> : Queryable<T>
 
         _context.ExecuteQuery(clearSql);
     }
+
+    public void Delete(Expression<Func<T, bool>> predicate)
+    {
+        var qf = new QueryFormatter(_context, monkeyPatch: true);
+
+        var whereClause = qf.Format(predicate);
+
+        string deleteSql = $"""
+            DELETE FROM {_tableInfo.Name}
+             WHERE {whereClause}
+            """;
+
+        Console.WriteLine(deleteSql + '\n');
+
+        _context.ExecuteQuery(deleteSql);
+    }
+
+
+    public void Update(string property, object newValue, Expression<Func<T, bool>> predicate)
+    {
+        Update([(property, newValue)], predicate);
+    }
+
+    public void Update(IEnumerable<(string, object)> setProperties, Expression<Func<T, bool>> predicate)
+    {
+        var qf = new QueryFormatter(_context, monkeyPatch: true);
+
+        string whereClause = qf.Format(predicate);
+
+        IEnumerable<string> setClauses = setProperties.Select(item => $"{item.Item1} = {new QueryFormatter(_context, true).Format(Expression.Constant(item.Item2))}");
+        string setClause = string.Join(",\n       ", setClauses);
+
+        string updateSql = $"""
+            UPDATE {_tableInfo.Name}
+               SET {setClause}
+             WHERE {whereClause}
+            """;
+
+        Console.WriteLine(updateSql + '\n');
+
+        _context.ExecuteQuery(updateSql);
+    }
+
+    public bool Exists(Func<T, bool> predicate) 
+    {
+        return true;
+    }
+
+    public bool NotExists(Func<T, bool> predicate)
+    {
+        return true;
+    }
+
 
     private void CheckTableCreation()
     {
