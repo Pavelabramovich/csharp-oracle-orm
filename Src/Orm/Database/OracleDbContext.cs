@@ -1,17 +1,7 @@
-﻿//using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Configuration;
-using System.Data;
+﻿using System.Data;
 using System.Dynamic;
-using System.Linq;
 using System.Reflection;
-using OracleOrm.Dev;
-using System.Text;
-using OracleOrm.Queries.Core;
-//using Oracle.ManagedDataAccess.Client;
+//using OracleOrm.Queries.Core;
 using System.Data.OracleClient;
 using System.Data.Common;
 
@@ -19,16 +9,15 @@ using System.Data.Common;
 namespace OracleOrm;
 
 
-public abstract class OracleDbContext //: DbContext
+public record OracleConnectionSettings(
+    string Protocol, 
+    string Host, 
+    long Port, 
+    string ServiceName, 
+    string SchemaName, 
+    string SchemaPassword)
 {
-    internal abstract string Protocol { get; } 
-    internal abstract string Host { get; } 
-    internal abstract long Port { get; } 
-    internal abstract string ServiceName { get; } 
-    internal abstract string SchemaName { get; } 
-    internal abstract string SchemaPassword { get; } 
-
-    private string ConnectionString => $"""
+    public string ConnectionString => $"""
         Data Source=
         (
             DESCRIPTION=
@@ -43,14 +32,28 @@ public abstract class OracleDbContext //: DbContext
         User Id={SchemaName};
         Password={SchemaPassword};
         """;
+}
 
-    public OracleConnection Connection { get; }
 
+public abstract class OracleDbContext : IDisposable
+{
+    private bool _isDisposed;
+
+    protected abstract OracleConnectionSettings ConnectionSettings { get; }
+
+    public OracleConnection Connection { get; init; }
+    public string SchemaName { get; init; }
 
     public OracleDbContext()
     {
-        Connection = new OracleConnection(ConnectionString);
+        Connection = new OracleConnection(ConnectionSettings.ConnectionString);
+        SchemaName = ConnectionSettings.SchemaName;
 
+        InitSets();
+    }
+
+    private void InitSets()
+    {
         var sets = GetType()
             .GetProperties()
             .Where(x => x.PropertyType is { IsConstructedGenericType: true } genProp && genProp.GetGenericTypeDefinition() == typeof(DbSet<>));
@@ -59,46 +62,12 @@ public abstract class OracleDbContext //: DbContext
         {
             set.SetValue(this, CreateSet(set.PropertyType.GetGenericArguments()[0]));
         }
-
-        
     }
 
 
-    //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    //{
-    //    optionsBuilder.UseOracle(this.ConnectionString);
-    //}
-
     public IEnumerable<ExpandoObject> ExecuteQuery(string query)
     {
-        //using (OracleConnection connection = new OracleConnection(connectionString))
-        //{
-        //    connection.Open();
-
-        //    string sqlQuery = "SELECT * FROM your_table";
-        //    using (OracleCommand command = new OracleCommand(sqlQuery, connection))
-        //    {
-        //        using (OracleDataReader reader = command.ExecuteReader())
-        //        {
-        //            while (reader.Read())
-        //            {
-        //                // Обработка результатов запроса
-        //            }
-        //        }
-        //    }
-        //}
-
-
-
-
-
-
-
-      //  using var command = this.Database.GetDbConnection().CreateCommand();
-
-     //   using var connection = new OracleConnection(ConnectionString);
-
-        using var command = new OracleCommand(query, Connection);
+        using var command = Connection.CreateCommand();
         command.CommandText = query;
 
         if (command.Connection is null)
@@ -110,13 +79,6 @@ public abstract class OracleDbContext //: DbContext
         IEnumerable<ExpandoObject> dataRows;
 
         using var dataReader = command.ExecuteReader();
-
-    //    List<object> data = new List<object>();
-
-
-
-
-
 
 
         dataRows = ReadData(dataReader);
@@ -149,13 +111,8 @@ public abstract class OracleDbContext //: DbContext
 
     public async Task<IEnumerable<ExpandoObject>> ExecuteQueryAsync(string query)
     {
-       // using var connection = new OracleConnection(ConnectionString);
-
-        await using var command = new OracleCommand(query, Connection);
+        await using var command = Connection.CreateCommand();
         command.CommandText = query;
-
-        //await using var command = this.Database.GetDbConnection().CreateCommand();
-        //command.CommandText = query;
 
         if (command.Connection is null)
             throw new InvalidOperationException("Can not create command with valid connection.");
@@ -178,6 +135,7 @@ public abstract class OracleDbContext //: DbContext
         return objects.Select(obj => QueryMapper.Map<T>(obj));
     }
 
+
     public static IEnumerable<ExpandoObject> ReadData(DbDataReader reader)
     {
         if (!reader.HasRows)
@@ -197,32 +155,8 @@ public abstract class OracleDbContext //: DbContext
                 (dbRow as IDictionary<string, object?>)[colName] = value;
             }
 
-            //foreach (PropertyDescriptor propertyDescriptor in TypeDescriptor.GetProperties(reader))
-            //{
-            //    object? obj = propertyDescriptor.GetValue(reader);
-            //    string colName = propertyDescriptor.Name;
-
-                
-            //}
-
             dataList.Add(dbRow);
         }
-
-
-        //foreach (var item in reader)
-        //{
-        //    ExpandoObject dbRow = new();
-
-        //    foreach (PropertyDescriptor propertyDescriptor in TypeDescriptor.GetProperties(item))
-        //    {
-        //        object? obj = propertyDescriptor.GetValue(item);
-        //        string colName = propertyDescriptor.Name;
-
-        //        (dbRow as IDictionary<string, object?>)[colName] = obj;
-        //    }
-
-        //    dataList.Add(dbRow);
-        //}
 
         return dataList;
     }
@@ -242,7 +176,7 @@ public abstract class OracleDbContext //: DbContext
         return new DbSet<T>(this);
     }
 
-    ~OracleDbContext()
+    public void Dispose()
     {
         Connection.Dispose();
     }

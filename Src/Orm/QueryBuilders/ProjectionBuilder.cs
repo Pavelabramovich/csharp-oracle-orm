@@ -1,13 +1,9 @@
-﻿//using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace OracleOrm;
+
 
 internal class ProjectionBuilder : DbExpressionVisitor
 {
@@ -42,14 +38,11 @@ internal class ProjectionBuilder : DbExpressionVisitor
 
 
 
-
     public override Expression VisitColumn(ColumnExpression column)
     {
         if (column.Alias == this.rowAlias)
         {
             var rowExpression = Expression.Call(this.row, miGetValue, Expression.Constant(column.Ordinal));
-
-            Console.WriteLine(column.Type);
 
             var convertExpression = Expression.Call(instance: null, s_ChangeTypeMethod, rowExpression, Expression.Constant(column.Type));
             return Expression.Convert(convertExpression, column.Type);

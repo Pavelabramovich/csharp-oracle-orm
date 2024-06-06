@@ -1,19 +1,9 @@
-﻿//using Microsoft.EntityFrameworkCore;
-//using Oracle.ManagedDataAccess.Client;
-using OracleOrm;
-using OracleOrm.Dev;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using OracleOrm.Dev;
 using System.Data;
-using System.Data.OracleClient;
-using System.Dynamic;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Xml.Linq;
-//using static Microsoft.EntityFrameworkCore.DbSet<object>;
+
 
 namespace OracleOrm.Tests;
+
 
 class Program
 {
@@ -62,67 +52,7 @@ class Program
         List<int> B = [.. from a in A select a + 12];
 
         Console.ReadKey();
-
-
-        //string Protocol = "TCP";
-        //string Host = "localhost";
-        //long Port = 1521;
-        //string ServiceName = "orcl";
-        //string SchemaName = "DEV";
-        //string SchemaPassword = "pass1pass";
-
-        //string ConnectionString = $"""
-        //    Data Source=
-        //    (
-        //        DESCRIPTION=
-        //        (
-        //            ADDRESS=(PROTOCOL={Protocol})
-        //            (HOST={Host})
-        //            (PORT={Port})
-        //        )
-        //        (CONNECT_DATA=(SERVICE_NAME={ServiceName}))
-        //    );
-
-        //    User Id={SchemaName};
-        //    Password={SchemaPassword};
-        //    """;
-
-
-
-
-        //// string connectionString = "Data Source=<your_data_source>;User Id=<your_username>;Password=<your_password>";
-        //int i = 0;
-        //using (OracleConnection connection = new OracleConnection(ConnectionString))
-        //{
-        //    connection.Open();
-
-        //    string sqlQuery = "SELECT * FROM dba_tables WHERE owner = 'DEV' AND table_name = 'STUDENTS'";
-        //    using (OracleCommand command = new OracleCommand(sqlQuery, connection))
-        //    {
-        //        using (OracleDataReader reader = command.ExecuteReader())
-        //        {
-
-
-        //            while (reader.Read())
-        //            {
-        //                Console.WriteLine(reader["OWNER"]);
-        //            }
-        //        }
-        //    }
-        //}
-
-        // Console.WriteLine(i);
-
-
     }
-
-
-
-
-    //private static (string, TProperty) SetProperty<TProperty>(string property, TProperty newValue)
-    //{
-    //    throw new NotImplementedException();
-    //}
 }
 
 

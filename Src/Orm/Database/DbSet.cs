@@ -54,7 +54,7 @@ public class DbSet<T> : Queryable<T>
              WHERE {whereClause}
             """;
 
-        Console.WriteLine(deleteSql + '\n');
+    //    Console.WriteLine(deleteSql + '\n');
 
         _context.ExecuteQuery(deleteSql);
     }
@@ -80,7 +80,7 @@ public class DbSet<T> : Queryable<T>
              WHERE {whereClause}
             """;
 
-        Console.WriteLine(updateSql + '\n');
+    //    Console.WriteLine(updateSql + '\n');
 
         _context.ExecuteQuery(updateSql);
     }
@@ -109,9 +109,9 @@ public class DbSet<T> : Queryable<T>
         //    .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
         //    .Single();
 
-        var t = _context
-         .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
-        .ToList();
+       // var t = _context
+       //  .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
+       //y .ToList();
 
         var tableAlreadyExists = _context
           .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")

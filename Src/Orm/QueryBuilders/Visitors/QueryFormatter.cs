@@ -31,7 +31,7 @@ internal class QueryFormatter : DbExpressionVisitor
         sb.Clear();
         this.Visit(expression);
 
-        Console.WriteLine(sb.ToString());
+    //    Console.WriteLine(sb.ToString());
 
         return this.sb.ToString();
     }
@@ -206,7 +206,7 @@ internal class QueryFormatter : DbExpressionVisitor
 
     protected override Expression VisitSubQuery(SubQueryExpression subQuery)
     {
-        Console.WriteLine("LOLOLOL");
+   //     Console.WriteLine("LOLOLOL");
         return base.VisitSubQuery(subQuery);
     }
 

@@ -1,7 +1,7 @@
 ﻿//using Microsoft.EntityFrameworkCore;
 //using Microsoft.EntityFrameworkCore.Query;
 using OracleOrm.Dev;
-using OracleOrm.Queries.Visitors;
+//using OracleOrm.Queries.Visitors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -160,7 +160,7 @@ internal class QueryBinder : ExpressionVisitor
         }
         catch (Exception exception)
         {
-            Console.WriteLine("CATCH!!!");
+           // Console.WriteLine("CATCH!!!");
             throw;
         }
 

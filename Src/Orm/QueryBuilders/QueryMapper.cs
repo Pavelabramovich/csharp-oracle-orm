@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Data;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using System.Dynamic;
-using System.Reflection.Metadata;
 
 
-namespace OracleOrm.Queries.Core;
+namespace OracleOrm;
 
 
 public static class QueryMapper
