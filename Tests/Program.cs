@@ -15,10 +15,14 @@ class Program
 
         DevContext context = new();
 
+        string k = "Katya";
+        int i = 3;
+
         var res1 = context.Students
             .Select(s => s)
-            .Where(s => s.Name != "Katya")
-            .Select(s => s.Name[0])
+            .Where(s => s.Name != k)
+            .Select(s => s.Id * (2 + i))
+           // .Select(s => s.Name[0])
             .ToList();
 
         var res2 = context.Students
@@ -41,7 +45,7 @@ class Program
 
         // context.Students.Delete(s => s.Name == "Katya");
 
-        context.Students.Update([("Name", "lol"), ("Id", 100)], s => s.Name == "Lera");
+       // context.Students.Update([("Name", "lol"), ("Id", 100)], s => s.Name == "Lera");
 
         var res09 = context.Students
             .Where(s => context.Students

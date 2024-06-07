@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace OracleOrm;
+
 
 internal static class TypeSystem
 {
@@ -32,6 +28,7 @@ internal static class TypeSystem
             foreach (Type arg in seqType.GetGenericArguments())
             {
                 Type ienum = typeof(IEnumerable<>).MakeGenericType(arg);
+
                 if (ienum.IsAssignableFrom(seqType))
                     return ienum;
             }

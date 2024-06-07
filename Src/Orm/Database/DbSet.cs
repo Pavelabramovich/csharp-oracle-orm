@@ -1,11 +1,7 @@
-﻿//using Microsoft.EntityFrameworkCore.Metadata;
-//using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System.Linq.Expressions;
-using System.Numerics;
-using System.Runtime.CompilerServices;
+﻿using System.Linq.Expressions;
 
 
-namespace OracleOrm;
+namespace OracleOrm; 
 
 
 internal record TableInfo(Type EntityType, string Name, List<string> Fields);
@@ -34,17 +30,28 @@ public class DbSet<T> : Queryable<T>
         CheckTableCreation();
     }
 
+    internal DbSet(OracleDbContext context, TableInfo tableInfo)
+        : base(new OracleQueryProvider(context))
+    {
+        _context = context;
+        _tableInfo = tableInfo;
+    }
+
     public void Clear()
     {
+        throw new NotImplementedException();
+
         string tableName = _tableInfo.Name;
 
         string clearSql = $"DELETE FROM {tableName.ToUpper()}";
 
-        _context.ExecuteQuery(clearSql);
+      //  _context.ExecuteQuery(clearSql);
     }
 
     public void Delete(Expression<Func<T, bool>> predicate)
     {
+        throw new NotImplementedException();
+
         var qf = new QueryFormatter(_context, monkeyPatch: true);
 
         var whereClause = qf.Format(predicate);
@@ -56,7 +63,7 @@ public class DbSet<T> : Queryable<T>
 
     //    Console.WriteLine(deleteSql + '\n');
 
-        _context.ExecuteQuery(deleteSql);
+        //_context.ExecuteQuery(deleteSql);
     }
 
 
@@ -67,6 +74,9 @@ public class DbSet<T> : Queryable<T>
 
     public void Update(IEnumerable<(string, object)> setProperties, Expression<Func<T, bool>> predicate)
     {
+        throw new NotImplementedException();
+
+
         var qf = new QueryFormatter(_context, monkeyPatch: true);
 
         string whereClause = qf.Format(predicate);
@@ -82,7 +92,7 @@ public class DbSet<T> : Queryable<T>
 
     //    Console.WriteLine(updateSql + '\n');
 
-        _context.ExecuteQuery(updateSql);
+       // _context.ExecuteQuery(updateSql);
     }
 
     public bool Exists(Func<T, bool> predicate) 
@@ -98,6 +108,7 @@ public class DbSet<T> : Queryable<T>
 
     private void CheckTableCreation()
     {
+
         var props = typeof(T).GetProperties();
 
         if (props.Count(p => p.Name == "Id") is int count and not 1)
@@ -105,66 +116,67 @@ public class DbSet<T> : Queryable<T>
 
         string tableName = CaseConverter.Plurarize(typeof(T).Name);
 
-        //var tableAlreadyExists = _context
-        //    .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
-        //    .Single();
 
-       // var t = _context
-       //  .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
-       //y .ToList();
+        var tableAlreadyExists = false;
 
-        var tableAlreadyExists = _context
-          .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
-          .Single();
+
+        using var command = _context.Connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'";
+
+        
+
+        // _context
+        //  .ExecuteQuery<bool>($"SELECT COUNT(*) FROM dba_tables WHERE owner = '{_context.SchemaName}' AND table_name = '{tableName.ToUpper()}'")
+        //  .Single();
 
         List<string> fields = [];
 
         if (tableAlreadyExists)
         {
-            string tableColumnsQuery = $"""
-                SELECT c.column_name,
-                       c.data_type,
-                       c.data_length,
-                       c.data_scale,
-                       c.nullable
-                  FROM all_tab_columns c
-                 WHERE c.table_name = '{tableName.ToUpper()}'
-                   AND c.owner = '{_context.SchemaName}'
-                """;
+         //   string tableColumnsQuery = $"""
+         //       SELECT c.column_name,
+         //              c.data_type,
+         //              c.data_length,
+         //              c.data_scale,
+         //              c.nullable
+         //         FROM all_tab_columns c
+         //        WHERE c.table_name = '{tableName.ToUpper()}'
+         //          AND c.owner = '{_context.SchemaName}'
+         //       """;
 
-            var columns = _context.ExecuteQuery(tableColumnsQuery).ToArray();
+         ////   var columns = _context.ExecuteQuery(tableColumnsQuery).ToArray();
 
-            if (columns.Length != props.Length)
-            {
-                throw new InvalidOperationException($"""
-                    The given type {typeof(T).Name} and the table {tableName} differ in the number of fields. Maybe you forgot to do the migration?
-                    """);
-            }
+         //   if (columns.Length != props.Length)
+         //   {
+         //       throw new InvalidOperationException($"""
+         //           The given type {typeof(T).Name} and the table {tableName} differ in the number of fields. Maybe you forgot to do the migration?
+         //           """);
+         //   }
 
-            foreach (dynamic column in columns)
-            {
-                string oracleType = column.DataType;
+         //   foreach (dynamic column in columns)
+         //   {
+         //       string oracleType = column.DataType;
 
-                string cSharpType = props
-                    .Single(p => p.Name == CaseConverter.ToPascalCase(column.ColumnName))
-                    .PropertyType.Name;
+         //       string cSharpType = props
+         //           .Single(p => p.Name == CaseConverter.ToPascalCase(column.ColumnName))
+         //           .PropertyType.Name;
 
-                string columnName = column.ColumnName;
+         //       string columnName = column.ColumnName;
 
-                if (s_dataTypeMapping.TryGetValue(cSharpType, out (string, IEnumerable<string>) oraclePair))
-                {
-                    if (oracleType != oraclePair.Item1)
-                        throw new InvalidOperationException($"The given type {cSharpType} and the table type {oracleType} is not paired.");
-                }
-                else
-                {
-                    throw new InvalidOperationException($"{cSharpType} is not supported as column type.");
-                }
+         //       if (s_dataTypeMapping.TryGetValue(cSharpType, out (string, IEnumerable<string>) oraclePair))
+         //       {
+         //           if (oracleType != oraclePair.Item1)
+         //               throw new InvalidOperationException($"The given type {cSharpType} and the table type {oracleType} is not paired.");
+         //       }
+         //       else
+         //       {
+         //           throw new InvalidOperationException($"{cSharpType} is not supported as column type.");
+         //       }
 
-                fields.Add(GetFieldCreation(cSharpType, columnName));
-            }
+         //       fields.Add(GetFieldCreation(cSharpType, columnName));
+         //   }
 
-            _tableInfo = new TableInfo(EntityType: typeof(T), tableName, fields);
+         //   _tableInfo = new TableInfo(EntityType: typeof(T), tableName, fields);
         }
         else
         {
@@ -180,7 +192,7 @@ public class DbSet<T> : Queryable<T>
 
             _tableInfo = new TableInfo(EntityType: typeof(T), tableName, fields);
 
-            _context.ExecuteQuery(tableCreationSql);
+           // _context.ExecuteQuery(tableCreationSql);
         }
     }
 

@@ -1,7 +1,9 @@
 ﻿using System.Data;
 using System.Data.Common;
+using System.Dynamic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Collections;
 
 
 namespace OracleOrm;
@@ -42,15 +44,23 @@ public class OracleQueryProvider : QueryProvider
         DbDataReader reader = command.ExecuteReader();
 
 
+
+
+
+
+
         Type elementType = TypeSystem.GetElementType(query.Projector.Body.Type);
 
-        return Activator.CreateInstance(
+        var res = Activator.CreateInstance(
             typeof(ProjectionReader<>).MakeGenericType(elementType),
             BindingFlags.Instance | BindingFlags.NonPublic, null,
             [reader, projector, this],
             null
         )!;
+
+        return res;
     }
+
 
 
     private TranslateResult Translate(Expression expression)
@@ -59,7 +69,7 @@ public class OracleQueryProvider : QueryProvider
 
         if (projection == null)
         {
-            expression = LocalVariablesEvaluater.Evaluate(expression);
+            expression = PretranslateEvaluator.Evaluate(expression);
 
             Expression result = new QueryBinder(_context).Bind(expression);
 

@@ -1,113 +1,117 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 
 
 namespace OracleOrm;
 
 
-public class LocalVariablesEvaluater
+public static class PretranslateEvaluator
 {
-    public static Expression Evaluate(Expression expression, Func<Expression, bool> fnCanBeEvaluated)
-    {
-        return new SubtreeEvaluator(new Nominator(fnCanBeEvaluated).Nominate(expression)).Eval(expression);
-    }
+    private static readonly Func<Expression, bool> s_defaultIsEvaluatable = expression => expression.NodeType != ExpressionType.Parameter;
+
 
     public static Expression Evaluate(Expression expression)
     {
-        return Evaluate(expression, CanBeEvaluatedLocally);
+        return Evaluate(expression, s_defaultIsEvaluatable);
     }
 
-    private static bool CanBeEvaluatedLocally(Expression expression)
+    public static Expression Evaluate(Expression expression, Func<Expression, bool> isEvaluatable)
     {
-        return expression.NodeType != ExpressionType.Parameter;
+        var evaluatableNodes = new EvaluatableNodesFilter(isEvaluatable).GetEvaluatableNodes(expression);
+        var evaluatedExpression = new SubtreeEvaluator(evaluatableNodes).ReplaceEvaluatableNodes(expression);
+
+        return evaluatedExpression;
     }
+
 
     private class SubtreeEvaluator : ExpressionVisitor
     {
-        private readonly HashSet<Expression> _candidates;
+        private readonly HashSet<Expression> _evaluatableNodes;
 
 
-        internal SubtreeEvaluator(HashSet<Expression> candidates)
+        public SubtreeEvaluator(HashSet<Expression> evaluatableNodes)
         {
-            _candidates = candidates;
+            _evaluatableNodes = evaluatableNodes;
         }
 
-        internal Expression Eval(Expression exp)
+        public Expression ReplaceEvaluatableNodes(Expression expression)
         {
-            return Visit(exp);
+            return Visit(expression);
         }
 
-        public override Expression Visit(Expression? exp)
+
+        [return: NotNullIfNotNull(nameof(expression))]
+        public override Expression? Visit(Expression? expression)
         {
-            if (exp == null)
-            {
+            if (expression is null)
                 return null;
-            }
 
-            if (_candidates.Contains(exp))
-            {
-                return Evaluate(exp);
-            }
+            if (_evaluatableNodes.Contains(expression))
+                return Evaluate(expression);
 
-            return base.Visit(exp);
+            return base.Visit(expression);
         }
 
-        private Expression Evaluate(Expression e)
+        private static Expression Evaluate(Expression evaluation)
         {
-            if (e.NodeType == ExpressionType.Constant)
-            {
-                return e;
-            }
+            if (evaluation.NodeType == ExpressionType.Constant)
+                return evaluation;
 
-            LambdaExpression lambda = Expression.Lambda(e);
+            LambdaExpression evaluationLambda = Expression.Lambda(body: evaluation);
+            object? evaluationValue = evaluationLambda.Compile().DynamicInvoke([]);
 
-            Delegate fn = lambda.Compile();
-
-            return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+            return Expression.Constant(evaluationValue, evaluation.Type);
         }
     }
 
-    private class Nominator : ExpressionVisitor
+
+    // Main goal of this class is to find nodes that can be calculated in before a SQL query
+    // creating (various operations with expressions captured by closure). This allows
+    // for simplifying expressions for subsequent processing.
+    private class EvaluatableNodesFilter : ExpressionVisitor
     {
-        private Func<Expression, bool> _fnCanBeEvaluated;
-        private HashSet<Expression> _candidates;
+        private readonly Func<Expression, bool> _isEvaluatable;
+        private readonly HashSet<Expression> _evaluatableNodes;
 
-        bool _cannotBeEvaluated;
+        private bool _isNodeEvaluatable;
 
-        internal Nominator(Func<Expression, bool> fnCanBeEvaluated)
+        public EvaluatableNodesFilter(Func<Expression, bool> isEvaluatable)
         {
-            _fnCanBeEvaluated = fnCanBeEvaluated;
-            _candidates = [];
+            _isEvaluatable = isEvaluatable;
+            _evaluatableNodes = [];
+
+            _isNodeEvaluatable = false;
         }
 
-        internal HashSet<Expression> Nominate(Expression expression)
+        public HashSet<Expression> GetEvaluatableNodes(Expression expression)
         {
             Visit(expression);
-            return _candidates;
+            return _evaluatableNodes;
         }
-
-        public override Expression Visit(Expression? expression)
+        
+        public override Expression? Visit(Expression? expression)
         {
-            if (expression != null)
+            if (expression is null)
+                return expression;
+
+            bool tempIsNodeEvaluatable = _isNodeEvaluatable;
+            _isNodeEvaluatable = true;
+
+            base.Visit(expression);
+
+            if (_isNodeEvaluatable)
             {
-                bool saveCannotBeEvaluated = _cannotBeEvaluated;
-                _cannotBeEvaluated = false;
-
-                base.Visit(expression);
-
-                if (!_cannotBeEvaluated)
+                if (_isEvaluatable(expression))
                 {
-                    if (_fnCanBeEvaluated(expression))
-                    {
-                        _candidates.Add(expression);
-                    }
-                    else
-                    {
-                        _cannotBeEvaluated = true;
-                    }
+                    _evaluatableNodes.Add(expression);
                 }
-
-                _cannotBeEvaluated |= saveCannotBeEvaluated;
+                else
+                {
+                    _isNodeEvaluatable = false;
+                }
             }
+
+            _isNodeEvaluatable &= tempIsNodeEvaluatable;
 
             return expression;
         }

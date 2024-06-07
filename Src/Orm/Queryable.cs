@@ -24,9 +24,9 @@ public class Queryable<T> : IQueryable<T>
         if (!typeof(IQueryable<T>).IsAssignableFrom(expression.Type))
             throw new ArgumentOutOfRangeException(nameof(expression));
 
-        this.Expression = expression;
-        this.Provider = queryProvider;
-        this.ElementType = typeof(T);
+        Expression = expression;
+        Provider = queryProvider; 
+        ElementType = typeof(T);
     }
 
     public Queryable(IQueryProvider queryProvider)
@@ -34,9 +34,9 @@ public class Queryable<T> : IQueryable<T>
         ArgumentNullException
             .ThrowIfNull(queryProvider, nameof(queryProvider));
 
-        this.Expression = Expression.Constant(this);
-        this.Provider = queryProvider;
-        this.ElementType = typeof(T);
+        Expression = Expression.Constant(this);
+        Provider = queryProvider;
+        ElementType = typeof(T);
     }
 
 
@@ -47,6 +47,6 @@ public class Queryable<T> : IQueryable<T>
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return ((IEnumerable)Provider.Execute(Expression)).GetEnumerator();
+        return GetEnumerator();
     }
 }

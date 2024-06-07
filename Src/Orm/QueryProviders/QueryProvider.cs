@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using System.Reflection;
 
 
 namespace OracleOrm;
@@ -20,7 +19,6 @@ public abstract class QueryProvider : IQueryProvider
 
         return (IQueryable)query!;
     }
-
 
     public TResult Execute<TResult>(Expression expression) 
     {
