@@ -63,7 +63,7 @@ public class OracleQueryProvider : QueryProvider
 
 
 
-    private TranslateResult Translate(Expression expression)
+    private TranslateResult Translate(Expression expression) 
     {
         ProjectionExpression projection = expression as ProjectionExpression;
 
@@ -73,8 +73,7 @@ public class OracleQueryProvider : QueryProvider
 
             Expression result = new QueryBinder(_context).Bind(expression);
 
-
-            projection = (ProjectionExpression)new QueryBinder(_context).Bind(expression);
+            projection = (ProjectionExpression)result;
         }
 
         string commandText = new QueryFormatter(_context).Format(projection.Source);

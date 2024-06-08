@@ -1,16 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-
+﻿
 namespace OracleOrm;
 
 
+// To "extend" an existing enum, needed to create another enum with
+// numeric identifiers that do not intersect with the "base" enum
 internal enum DbExpressionType
 {
-    Table = 1000, // make sure these don't overlap with ExpressionType
+    Table = 128, 
     Column,
     Select,
     Projection,

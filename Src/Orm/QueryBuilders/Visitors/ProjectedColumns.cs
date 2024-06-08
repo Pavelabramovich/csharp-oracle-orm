@@ -72,32 +72,8 @@ internal class ColumnProjector : DbExpressionVisitor
         ArgumentNullException
             .ThrowIfNull(expression, nameof(expression));   
 
-        //if (expression.NodeType == (ExpressionType)DbExpressionType.FunctionCalling)
-        //{
-        //    var calling = (FunctionCallingExpression)expression;
-
-        //    Visit(calling.Instance);
-            
-        //    foreach (var param in calling.Params)
-        //    {
-        //        Visit(param);
-        //    }
-
-        //    return expression;
-        //}
-        //else 
         if (this.candidates.Contains(expression))
         { 
-            //if (expression.NodeType == (ExpressionType)DbExpressionType.FunctionCalling)
-            //{
-            //    FunctionCallingExpression calling = (FunctionCallingExpression)expression;
-
-            //    var mapped = new FunctionCallingExpression(calling.Method, Visit(calling.Instance), calling.Params.Select(p => Visit(p)));
-
-            //    columns.Add(mapped);
-            //}
-
-            //else 
             if (expression.NodeType == (ExpressionType)DbExpressionType.Column)
             { 
                 ColumnExpression column = (ColumnExpression)expression;

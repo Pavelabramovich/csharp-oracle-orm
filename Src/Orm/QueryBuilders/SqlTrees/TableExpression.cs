@@ -11,21 +11,26 @@ namespace OracleOrm;
 
 public class TableExpression : Expression
 {
-    public Type ElementsType { get; set; }
+    public string Name { get; }
+    public string Alias { get; }
 
-    string alias;
-    string name;
+    public Type ElementsType { get; }
+
+
+    //public TableExpression(Type type, string alias, string name)
+    //{
+    //    Alias = alias;
+    //    Name = name;
+
+    //}
+
 
     internal TableExpression(Type type, string alias, string name)
         : base((ExpressionType)DbExpressionType.Table, type)
     {
-        this.alias = alias;
-        this.name = name;
-
+        Alias = alias;
+        Name = name;
 
         ElementsType = TypeSystem.GetElementType(type); 
     }
-
-    internal string Alias => alias;
-    internal string Name => name;
 }
