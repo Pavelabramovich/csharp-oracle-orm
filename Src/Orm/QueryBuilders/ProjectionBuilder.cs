@@ -5,7 +5,7 @@ using System.Reflection;
 namespace OracleOrm;
 
 
-internal class ProjectionBuilder : DbExpressionVisitor
+internal class ProjectionBuilder : SqlExpressionVisitor
 {
     private static readonly MethodInfo s_ChangeTypeMethod
         = typeof(Convert).GetMethod(nameof(Convert.ChangeType), [typeof(object), typeof(Type)])!;
@@ -38,7 +38,7 @@ internal class ProjectionBuilder : DbExpressionVisitor
 
 
 
-    public override Expression VisitColumn(ColumnExpression column)
+    protected override Expression VisitColumn(ColumnExpression column)
     {
         if (column.Alias == this.rowAlias)
         {
@@ -53,7 +53,7 @@ internal class ProjectionBuilder : DbExpressionVisitor
         }
     }
 
-    public override Expression VisitProjection(ProjectionExpression proj)
+    protected override Expression VisitProjection(ProjectionExpression proj)
     {
         LambdaExpression subQuery = Expression.Lambda(base.VisitProjection(proj), this.row);
 

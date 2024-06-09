@@ -29,7 +29,7 @@ internal class QueryBinder : ExpressionVisitor
 
     private bool CanBeColumn(Expression expression)
     {
-        return expression.NodeType == (ExpressionType)DbExpressionType.Column;
+        return expression is ColumnExpression;
     }
 
     internal Expression Bind(Expression expression)
@@ -228,10 +228,14 @@ internal class QueryBinder : ExpressionVisitor
 
     private static string GetExistingAlias(Expression source)
     {
-        return (DbExpressionType)source.NodeType switch
+        if (source is not SqlExpression sqlExpression)
+            throw new InvalidOperationException();
+
+
+        return sqlExpression.SqlNodeType switch
         {
-            DbExpressionType.Select => ((SelectExpression)source).Alias,
-            DbExpressionType.Table => ((TableExpression)source).Alias,
+            SqlExpressionType.Select => ((SelectExpression)source).Alias,
+            SqlExpressionType.Table => ((TableExpression)source).Alias,
 
       //      DbExpressionType.FunctionCalling => ((TableExpression)source).Alias,
 

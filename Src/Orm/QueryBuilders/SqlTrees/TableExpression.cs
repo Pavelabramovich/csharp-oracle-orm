@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace OracleOrm;
 
 
-public class TableExpression : Expression
+public class TableExpression : SqlExpression
 {
     public string Name { get; }
     public string Alias { get; }
@@ -17,16 +17,8 @@ public class TableExpression : Expression
     public Type ElementsType { get; }
 
 
-    //public TableExpression(Type type, string alias, string name)
-    //{
-    //    Alias = alias;
-    //    Name = name;
-
-    //}
-
-
     internal TableExpression(Type type, string alias, string name)
-        : base((ExpressionType)DbExpressionType.Table, type)
+        : base(SqlExpressionType.Table, type)
     {
         Alias = alias;
         Name = name;

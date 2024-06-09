@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace OracleOrm;
 
 
-public class SelectExpression : Expression
+public class SelectExpression : SqlExpression
 {
     string alias;
     ReadOnlyCollection<ColumnDeclaration> columns;
@@ -19,7 +19,7 @@ public class SelectExpression : Expression
 
 
     internal SelectExpression(Type type, string alias, IEnumerable<ColumnDeclaration> columns, Expression from, Expression where)
-        : base((ExpressionType)DbExpressionType.Select, type)
+        : base(SqlExpressionType.Select, type)
     {
         this.alias = alias;
         this.columns = columns as ReadOnlyCollection<ColumnDeclaration>;

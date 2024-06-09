@@ -31,7 +31,7 @@ internal sealed class ProjectedColumns
 }
 
 
-internal class ColumnProjector : DbExpressionVisitor
+internal class ColumnProjector : SqlExpressionVisitor
 {
     Nominator nominator;
 
@@ -67,16 +67,16 @@ internal class ColumnProjector : DbExpressionVisitor
         return new ProjectedColumns(this.Visit(expression), this.columns.AsReadOnly());
     }
 
+
     public override Expression Visit(Expression? expression)
     {
         ArgumentNullException
             .ThrowIfNull(expression, nameof(expression));   
 
         if (this.candidates.Contains(expression))
-        { 
-            if (expression.NodeType == (ExpressionType)DbExpressionType.Column)
+        {
+            if (expression is ColumnExpression column)
             { 
-                ColumnExpression column = (ColumnExpression)expression;
                 ColumnExpression mapped;
 
                 if (this.map.TryGetValue(column, out mapped))
@@ -141,7 +141,7 @@ internal class ColumnProjector : DbExpressionVisitor
     }
 
 
-    class Nominator : DbExpressionVisitor
+    class Nominator : SqlExpressionVisitor
     {
         Func<Expression, bool> fnCanBeColumn;
         bool isBlocked;

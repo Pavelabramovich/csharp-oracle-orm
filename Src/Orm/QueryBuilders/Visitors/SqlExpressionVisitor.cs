@@ -4,31 +4,33 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
-using System.Threading.Tasks;
-
-
 
 namespace OracleOrm;
 
-public class DbExpressionVisitor : ExpressionVisitor
-{
-    public override Expression Visit(Expression? expr)
-    {
-        if (expr == null)
-        {
-            return null;
-        }
 
-        return (DbExpressionType)expr.NodeType switch
+public class SqlExpressionVisitor : ExpressionVisitor
+{
+    protected override Expression VisitExtension(Expression node)
+    {
+        if (node is SqlExpression sqlExpression)
+            return VisitSqlExpression(sqlExpression);
+
+        return base.VisitExtension(node);
+    }
+
+    private Expression VisitSqlExpression(SqlExpression sqlExpression)
+    {
+        return sqlExpression.SqlNodeType switch
         {
-            DbExpressionType.Table => VisitTable((TableExpression)expr),
-            DbExpressionType.Column => VisitColumn((ColumnExpression)expr),
-            DbExpressionType.Select => VisitSelect((SelectExpression)expr),
-            DbExpressionType.Projection => VisitProjection((ProjectionExpression)expr),
-            DbExpressionType.FunctionCalling => VisitFunctionCalling((FunctionCallingExpression)expr),
-            DbExpressionType.Join => VisitJoin((JoinExpression)expr),
-            DbExpressionType.SubQuery => VisitSubQuery((SubQueryExpression)expr), 
-            _ => base.Visit(expr),
+            SqlExpressionType.Table => VisitTable((TableExpression)sqlExpression),
+            SqlExpressionType.Column => VisitColumn((ColumnExpression)sqlExpression),
+            SqlExpressionType.Select => VisitSelect((SelectExpression)sqlExpression),
+            SqlExpressionType.Projection => VisitProjection((ProjectionExpression)sqlExpression),
+            SqlExpressionType.FunctionCalling => VisitFunctionCalling((FunctionCallingExpression)sqlExpression),
+            SqlExpressionType.Join => VisitJoin((JoinExpression)sqlExpression),
+            SqlExpressionType.SubQuery => VisitSubQuery((SubQueryExpression)sqlExpression),
+
+            _ => throw new NotImplementedException($"This type sql node type {sqlExpression.SqlNodeType} is not supported.")
         };
     }
 
@@ -44,19 +46,18 @@ public class DbExpressionVisitor : ExpressionVisitor
     }
 
 
-    public virtual Expression VisitColumn(ColumnExpression column)
+    protected virtual Expression VisitColumn(ColumnExpression column)
     {
         return column;
     }
 
     protected virtual Expression VisitJoin(JoinExpression join)
     {
+        Expression left = Visit(join.Left);
 
-        Expression left = this.Visit(join.Left);
+        Expression right = Visit(join.Right);
 
-        Expression right = this.Visit(join.Right);
-
-        Expression condition = this.Visit(join.Condition);
+        Expression condition = Visit(join.Condition);
 
         if (left != join.Left || right != join.Right || condition != join.Condition)
         {
@@ -93,7 +94,7 @@ public class DbExpressionVisitor : ExpressionVisitor
     }
 
 
-    public virtual Expression VisitProjection(ProjectionExpression proj)
+    protected virtual Expression VisitProjection(ProjectionExpression proj)
     {
         SelectExpression source = (SelectExpression)Visit(proj.Source);
         Expression projector = Visit(proj.Projector);
@@ -106,7 +107,7 @@ public class DbExpressionVisitor : ExpressionVisitor
         return proj;
     }
 
-    public virtual Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
+    protected virtual Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
     {
         return funcCalling;
     }

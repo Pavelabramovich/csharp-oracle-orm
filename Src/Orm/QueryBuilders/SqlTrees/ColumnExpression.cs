@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace OracleOrm;
 
 
-public class ColumnExpression : Expression
+public class ColumnExpression : SqlExpression
 {
     string alias;
     string name;
@@ -18,7 +18,7 @@ public class ColumnExpression : Expression
 
 
     internal ColumnExpression(Type type, string alias, string name, int ordinal)
-        : base((ExpressionType)DbExpressionType.Column, type)
+        : base(SqlExpressionType.Column, type)
     {
         this.alias = alias;
         this.name = name;

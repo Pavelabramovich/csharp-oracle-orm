@@ -4,9 +4,9 @@ namespace OracleOrm;
 
 // To "extend" an existing enum, needed to create another enum with
 // numeric identifiers that do not intersect with the "base" enum
-internal enum DbExpressionType
+public enum SqlExpressionType
 {
-    Table = 128, 
+    Table, 
     Column,
     Select,
     Projection,

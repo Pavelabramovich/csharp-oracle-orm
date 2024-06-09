@@ -18,7 +18,7 @@ internal enum JoinType
 
 }
 
-public class JoinExpression : Expression
+public class JoinExpression : SqlExpression
 {
 
     JoinType joinType;
@@ -31,7 +31,7 @@ public class JoinExpression : Expression
 
     internal JoinExpression(Type type, JoinType joinType, Expression left, Expression right, Expression condition)
 
-        : base((ExpressionType)DbExpressionType.Join, type)
+        : base(SqlExpressionType.Join, type)
     {
 
         this.joinType = joinType;

@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace OracleOrm;
 
 
-public class FunctionCallingExpression : Expression
+public class FunctionCallingExpression : SqlExpression
 {
     public MethodInfo Method { get; }
     public Expression? Instance { get; }
@@ -18,7 +18,7 @@ public class FunctionCallingExpression : Expression
 
 
     public FunctionCallingExpression(MethodInfo method, Expression? instance, IEnumerable<Expression> @params)
-        : base((ExpressionType)DbExpressionType.FunctionCalling, method.ReturnType)
+        : base(SqlExpressionType.FunctionCalling, method.ReturnType)
     {
         this.Method = method;
         this.Instance = instance;

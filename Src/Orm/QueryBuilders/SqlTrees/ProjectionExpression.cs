@@ -9,13 +9,13 @@ using System.Threading.Tasks;
 namespace OracleOrm;
 
 
-public class ProjectionExpression : Expression
+public class ProjectionExpression : SqlExpression
 {
     SelectExpression source;
     Expression projector;
 
     internal ProjectionExpression(SelectExpression source, Expression projector)
-        : base((ExpressionType)DbExpressionType.Projection, projector.Type)
+        : base(SqlExpressionType.Projection, projector.Type)
     {
         this.source = source;
         this.projector = projector;

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace OracleOrm;
 
-internal class Replacer : DbExpressionVisitor
+internal class Replacer : SqlExpressionVisitor
 {
     Expression searchFor;
     Expression replaceWith;

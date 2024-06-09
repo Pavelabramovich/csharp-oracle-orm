@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace OracleOrm;
 
-internal class QueryFormatter : DbExpressionVisitor
+internal class QueryFormatter : SqlExpressionVisitor
 {
     private OracleDbContext _context;
     private readonly StringBuilder sb;
@@ -191,7 +191,7 @@ internal class QueryFormatter : DbExpressionVisitor
         return c;
     }
 
-    public override Expression VisitColumn(ColumnExpression column)
+    protected override Expression VisitColumn(ColumnExpression column)
     {
         if (!string.IsNullOrEmpty(column.Alias))
         {
@@ -253,16 +253,19 @@ internal class QueryFormatter : DbExpressionVisitor
 
     protected override Expression VisitSource(Expression source)
     {
-        switch ((DbExpressionType)source.NodeType)
+        if (source is not SqlExpression sqlExpression)
+            throw new InvalidOperationException();
+
+        switch (sqlExpression.SqlNodeType)
         {
-            case DbExpressionType.Table:
+            case SqlExpressionType.Table:
                 TableExpression table = (TableExpression)source;
                 sb.Append(GetTableName(table.ElementsType));
                 sb.Append(" "); // Oracle only
                 sb.Append(table.Alias);
                 break;
 
-            case DbExpressionType.Select:
+            case SqlExpressionType.Select:
                 SelectExpression select = (SelectExpression)source;
                 sb.Append("(");
                 this.AppendNewLine(Identation.Inner);
@@ -274,7 +277,7 @@ internal class QueryFormatter : DbExpressionVisitor
                 sb.Append(select.Alias);
                 break;
 
-            case DbExpressionType.Join:
+            case SqlExpressionType.Join:
                 this.VisitJoin((JoinExpression)source);
                 break;
 
@@ -285,7 +288,7 @@ internal class QueryFormatter : DbExpressionVisitor
         return source;
     }
 
-    public override Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
+    protected override Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
     {
         if (funcCalling is SubQueryExpression subQuery)
         {
