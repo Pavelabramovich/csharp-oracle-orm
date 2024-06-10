@@ -12,9 +12,14 @@ public class SubQueryExpression : FunctionCallingExpression
 {
     public string Sql { get; set; }
 
-    public SubQueryExpression(MethodInfo method, Expression? instance, IEnumerable<Expression> @params, string sql)
+    internal SubQueryExpression(MethodInfo method, Expression? instance, IEnumerable<Expression> @params, string sql)
         : base(method, instance, @params)
     {
         this.Sql = sql;
+    }
+
+    protected internal override Expression Accept(SqlExpressionVisitor sqlVisitor)
+    {
+        return sqlVisitor.VisitSubQuery(this);
     }
 }

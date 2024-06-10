@@ -1,32 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
-
 
 namespace OracleOrm;
 
 
 public class ColumnExpression : SqlExpression
 {
-    string alias;
-    string name;
+    public string Alias { get; }
+    public string Name { get; }
 
-    int ordinal;
+    public int Ordinal { get; }
 
 
     internal ColumnExpression(Type type, string alias, string name, int ordinal)
-        : base(SqlExpressionType.Column, type)
+        : base(type)
     {
-        this.alias = alias;
-        this.name = name;
-        this.ordinal = ordinal;
+        Alias = alias;
+        Name = name;
+        Ordinal = ordinal;
     }
 
-    internal string Alias => alias;
-    internal string Name => name;
-
-    internal int Ordinal => ordinal;
+    protected internal override Expression Accept(SqlExpressionVisitor sqlVisitor)
+    {
+        return sqlVisitor.VisitColumn(this);
+    }
 }

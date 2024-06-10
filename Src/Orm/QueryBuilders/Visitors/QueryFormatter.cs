@@ -191,7 +191,8 @@ internal class QueryFormatter : SqlExpressionVisitor
         return c;
     }
 
-    protected override Expression VisitColumn(ColumnExpression column)
+
+    protected internal override Expression VisitColumn(ColumnExpression column)
     {
         if (!string.IsNullOrEmpty(column.Alias))
         {
@@ -204,13 +205,14 @@ internal class QueryFormatter : SqlExpressionVisitor
         return column;
     }
 
-    protected override Expression VisitSubQuery(SubQueryExpression subQuery)
+    protected internal override Expression VisitSubQuery(SubQueryExpression subQuery)
     {
-   //     Console.WriteLine("LOLOLOL");
-        return base.VisitSubQuery(subQuery);
+        string sql = subQuery.Sql;
+        sb.Append(sql);
+        return subQuery;
     }
 
-    protected override Expression VisitSelect(SelectExpression select)
+    protected internal override Expression VisitSelect(SelectExpression select)
     {
         sb.Append("SELECT ");
 
@@ -251,34 +253,32 @@ internal class QueryFormatter : SqlExpressionVisitor
         return select;
     }
 
-    protected override Expression VisitSource(Expression source)
+    protected internal override Expression VisitSource(Expression source)
     {
         if (source is not SqlExpression sqlExpression)
             throw new InvalidOperationException();
 
-        switch (sqlExpression.SqlNodeType)
+        switch (sqlExpression)
         {
-            case SqlExpressionType.Table:
-                TableExpression table = (TableExpression)source;
-                sb.Append(GetTableName(table.ElementsType));
+            case TableExpression tableExpression:
+                sb.Append(GetTableName(tableExpression.ElementsType));
                 sb.Append(" "); // Oracle only
-                sb.Append(table.Alias);
+                sb.Append(tableExpression.Alias);
                 break;
 
-            case SqlExpressionType.Select:
-                SelectExpression select = (SelectExpression)source;
+            case SelectExpression selectExpression:
                 sb.Append("(");
                 this.AppendNewLine(Identation.Inner);
-                this.Visit(select);
+                this.Visit(selectExpression);
                 this.AppendNewLine(Identation.Outer);
 
                 sb.Append(")");
                 sb.Append(" "); // Oracle only
-                sb.Append(select.Alias);
+                sb.Append(selectExpression.Alias);
                 break;
 
-            case SqlExpressionType.Join:
-                this.VisitJoin((JoinExpression)source);
+            case JoinExpression joinExpression:
+                this.VisitJoin(joinExpression);
                 break;
 
             default:
@@ -288,18 +288,8 @@ internal class QueryFormatter : SqlExpressionVisitor
         return source;
     }
 
-    protected override Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
+    protected internal override Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
     {
-        if (funcCalling is SubQueryExpression subQuery)
-        {
-            string sql = subQuery.Sql;
-
-            sb.Append(sql);
-
-            return funcCalling;
-        }
-
-
         var method = funcCalling.Method;
         var instance = funcCalling.Instance;
         var @params = funcCalling.Params.ToArray();
@@ -342,14 +332,14 @@ internal class QueryFormatter : SqlExpressionVisitor
         }
     }
 
-    protected override Expression VisitJoin(JoinExpression join)
+    protected internal override Expression VisitJoin(JoinExpression join)
     {
 
         this.VisitSource(join.Left);
 
         this.AppendNewLine(Identation.Same);
 
-        switch (join.Join)
+        switch (join.JoinType)
         {
             case JoinType.CrossJoin:
                 sb.Append("CROSS JOIN ");

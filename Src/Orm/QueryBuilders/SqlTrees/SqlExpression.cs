@@ -11,21 +11,29 @@ namespace OracleOrm;
 
 public abstract partial class SqlExpression : Expression
 {
-    private readonly Type _type;
-    public SqlExpressionType SqlNodeType { get; }
-    
-    public SqlExpression(SqlExpressionType sqlExpressionType, Type type)
+    internal SqlExpression(Type type)
     {
-        _type = type;
-        SqlNodeType = sqlExpressionType;
+        Type = type;
     }
 
-    public override Type Type => _type;
+    public override Type Type { get; }
     public override sealed ExpressionType NodeType => ExpressionType.Extension;
+
+    protected override sealed Expression Accept(ExpressionVisitor visitor)
+    {
+        return visitor is SqlExpressionVisitor sqlVisitor
+            ? Accept(sqlVisitor) 
+            : base.Accept(visitor);
+    }
+
+    protected internal virtual Expression Accept(SqlExpressionVisitor sqlVisitor)
+    {
+        return base.Accept(sqlVisitor);
+    }
 }
 
 
-public partial class SqlExpression
-{
+//public partial class SqlExpression
+//{
 
-}
+//}

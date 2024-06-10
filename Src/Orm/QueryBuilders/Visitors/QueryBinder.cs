@@ -232,12 +232,10 @@ internal class QueryBinder : ExpressionVisitor
             throw new InvalidOperationException();
 
 
-        return sqlExpression.SqlNodeType switch
+        return sqlExpression switch
         {
-            SqlExpressionType.Select => ((SelectExpression)source).Alias,
-            SqlExpressionType.Table => ((TableExpression)source).Alias,
-
-      //      DbExpressionType.FunctionCalling => ((TableExpression)source).Alias,
+            SelectExpression selectExpression => selectExpression.Alias,
+            TableExpression tableExpression => tableExpression.Alias,
 
             _ => throw new InvalidOperationException(string.Format("Invalid source node type '{0}'", source.NodeType)),
         };

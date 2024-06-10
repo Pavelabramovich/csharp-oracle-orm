@@ -38,7 +38,7 @@ internal class ProjectionBuilder : SqlExpressionVisitor
 
 
 
-    protected override Expression VisitColumn(ColumnExpression column)
+    protected internal override Expression VisitColumn(ColumnExpression column)
     {
         if (column.Alias == this.rowAlias)
         {
@@ -53,7 +53,7 @@ internal class ProjectionBuilder : SqlExpressionVisitor
         }
     }
 
-    protected override Expression VisitProjection(ProjectionExpression proj)
+    protected internal override Expression VisitProjection(ProjectionExpression proj)
     {
         LambdaExpression subQuery = Expression.Lambda(base.VisitProjection(proj), this.row);
 

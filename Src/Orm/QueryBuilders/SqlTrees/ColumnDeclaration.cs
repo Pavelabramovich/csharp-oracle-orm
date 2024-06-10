@@ -1,23 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
+
 
 namespace OracleOrm;
 
+
 public class ColumnDeclaration
 {
-    string name;
-    Expression expression;
+    public string Name { get; }
+    public Expression Expression { get; }
 
-    internal ColumnDeclaration(string name, Expression expression)
+
+    public ColumnDeclaration(string name, Expression expression)
     {
-        this.name = name;
-        this.expression = expression;
+        Name = name;
+        Expression = expression;
     }
-
-    internal string Name => name;
-    internal Expression Expression => expression;
 }

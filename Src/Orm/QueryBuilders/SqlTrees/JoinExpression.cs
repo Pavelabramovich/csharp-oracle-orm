@@ -1,75 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
+
 
 namespace OracleOrm;
 
-internal enum JoinType
+
+public enum JoinType
 {
-
     CrossJoin,
-
     InnerJoin,
-
     CrossApply,
-
 }
+
 
 public class JoinExpression : SqlExpression
 {
+    public JoinType JoinType { get; }
 
-    JoinType joinType;
+    public Expression Left { get; }
+    public Expression Right { get; }
+    public new Expression Condition { get; }
 
-    Expression left;
-
-    Expression right;
-
-    Expression condition;
 
     internal JoinExpression(Type type, JoinType joinType, Expression left, Expression right, Expression condition)
-
-        : base(SqlExpressionType.Join, type)
+        : base(type)
     {
-
-        this.joinType = joinType;
-
-        this.left = left;
-
-        this.right = right;
-
-        this.condition = condition;
-
+        JoinType = joinType;
+        Left = left;
+        Right = right;
+        Condition = condition;
     }
 
-    internal JoinType Join
+    protected internal override Expression Accept(SqlExpressionVisitor sqlVisitor)
     {
-
-        get { return this.joinType; }
-
+        return sqlVisitor.VisitJoin(this);
     }
-
-    internal Expression Left
-    {
-
-        get { return this.left; }
-
-    }
-
-    internal Expression Right
-    {
-
-        get { return this.right; }
-
-    }
-
-    internal new Expression Condition
-    {
-
-        get { return this.condition; }
-
-    }
-
 }

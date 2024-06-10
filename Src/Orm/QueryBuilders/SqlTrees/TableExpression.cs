@@ -18,11 +18,16 @@ public class TableExpression : SqlExpression
 
 
     internal TableExpression(Type type, string alias, string name)
-        : base(SqlExpressionType.Table, type)
+        : base(type)
     {
         Alias = alias;
         Name = name;
 
         ElementsType = TypeSystem.GetElementType(type); 
+    }
+
+    protected internal override Expression Accept(SqlExpressionVisitor sqlVisitor)
+    {
+        return sqlVisitor.VisitTable(this);
     }
 }

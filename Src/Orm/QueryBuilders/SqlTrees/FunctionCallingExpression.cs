@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 
 namespace OracleOrm;
@@ -17,11 +12,16 @@ public class FunctionCallingExpression : SqlExpression
     public IEnumerable<Expression> Params { get; }
 
 
-    public FunctionCallingExpression(MethodInfo method, Expression? instance, IEnumerable<Expression> @params)
-        : base(SqlExpressionType.FunctionCalling, method.ReturnType)
+    internal FunctionCallingExpression(MethodInfo method, Expression? instance, IEnumerable<Expression> @params)
+        : base(method.ReturnType)
     {
-        this.Method = method;
-        this.Instance = instance;
-        this.Params = @params;
+        Method = method;
+        Instance = instance;
+        Params = @params;
+    }
+
+    protected internal override Expression Accept(SqlExpressionVisitor sqlVisitor)
+    {
+        return sqlVisitor.VisitFunctionCalling(this);
     }
 }

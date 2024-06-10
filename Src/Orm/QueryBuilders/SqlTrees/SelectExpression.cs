@@ -12,30 +12,23 @@ namespace OracleOrm;
 
 public class SelectExpression : SqlExpression
 {
-    string alias;
-    ReadOnlyCollection<ColumnDeclaration> columns;
-    Expression from;
-    Expression where;
+    public string Alias { get; }
+    public ReadOnlyCollection<ColumnDeclaration> Columns { get; }
+    public Expression From { get; }
+    public Expression Where { get; }
 
 
     internal SelectExpression(Type type, string alias, IEnumerable<ColumnDeclaration> columns, Expression from, Expression where)
-        : base(SqlExpressionType.Select, type)
+        : base(type)
     {
-        this.alias = alias;
-        this.columns = columns as ReadOnlyCollection<ColumnDeclaration>;
-
-        if (this.columns == null)
-        {
-            this.columns = new List<ColumnDeclaration>(columns).AsReadOnly();
-        }
-
-        this.from = from;
-        this.where = where;
+        Alias = alias;
+        Columns = columns.ToArray().AsReadOnly();
+        From = from;
+        Where = where;
     }
 
-
-    internal string Alias => alias;
-    internal ReadOnlyCollection<ColumnDeclaration> Columns => columns;
-    internal Expression From => from;
-    internal Expression Where => where;
+    protected internal override Expression Accept(SqlExpressionVisitor sqlVisitor)
+    {
+        return sqlVisitor.VisitSelect(this);
+    }
 }

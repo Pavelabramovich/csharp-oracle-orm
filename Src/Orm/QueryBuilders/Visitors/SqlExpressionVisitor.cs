@@ -1,57 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
+﻿using System.Collections.ObjectModel;
 using System.Linq.Expressions;
-using System.Text;
+
 
 namespace OracleOrm;
 
 
 public class SqlExpressionVisitor : ExpressionVisitor
 {
-    protected override Expression VisitExtension(Expression node)
-    {
-        if (node is SqlExpression sqlExpression)
-            return VisitSqlExpression(sqlExpression);
-
-        return base.VisitExtension(node);
-    }
-
-    private Expression VisitSqlExpression(SqlExpression sqlExpression)
-    {
-        return sqlExpression.SqlNodeType switch
-        {
-            SqlExpressionType.Table => VisitTable((TableExpression)sqlExpression),
-            SqlExpressionType.Column => VisitColumn((ColumnExpression)sqlExpression),
-            SqlExpressionType.Select => VisitSelect((SelectExpression)sqlExpression),
-            SqlExpressionType.Projection => VisitProjection((ProjectionExpression)sqlExpression),
-            SqlExpressionType.FunctionCalling => VisitFunctionCalling((FunctionCallingExpression)sqlExpression),
-            SqlExpressionType.Join => VisitJoin((JoinExpression)sqlExpression),
-            SqlExpressionType.SubQuery => VisitSubQuery((SubQueryExpression)sqlExpression),
-
-            _ => throw new NotImplementedException($"This type sql node type {sqlExpression.SqlNodeType} is not supported.")
-        };
-    }
-
-
-    protected virtual Expression VisitTable(TableExpression table)
+    protected internal virtual Expression VisitTable(TableExpression table)
     {
         return table;
     }
 
-    protected virtual Expression VisitSubQuery(SubQueryExpression subQuery)
+    protected internal virtual Expression VisitSubQuery(SubQueryExpression subQuery)
     {
         return subQuery;
     }
 
 
-    protected virtual Expression VisitColumn(ColumnExpression column)
+    protected internal virtual Expression VisitColumn(ColumnExpression column)
     {
         return column;
     }
 
-    protected virtual Expression VisitJoin(JoinExpression join)
+    protected internal virtual Expression VisitJoin(JoinExpression join)
     {
         Expression left = Visit(join.Left);
 
@@ -61,9 +33,7 @@ public class SqlExpressionVisitor : ExpressionVisitor
 
         if (left != join.Left || right != join.Right || condition != join.Condition)
         {
-
-            return new JoinExpression(join.Type, join.Join, left, right, condition);
-
+            return new JoinExpression(join.Type, join.JoinType, left, right, condition);
         }
 
         return join;
@@ -71,7 +41,7 @@ public class SqlExpressionVisitor : ExpressionVisitor
     }
 
 
-    protected virtual Expression VisitSelect(SelectExpression select)
+    protected internal virtual Expression VisitSelect(SelectExpression select)
     {
         Expression from = VisitSource(select.From);
         Expression where = Visit(select.Where);
@@ -83,18 +53,17 @@ public class SqlExpressionVisitor : ExpressionVisitor
             return new SelectExpression(select.Type, select.Alias, columns, from, where);
         }
 
-
         return select;
     }
 
 
-    protected virtual Expression VisitSource(Expression source)
+    protected internal virtual Expression VisitSource(Expression source)
     {
         return Visit(source);
     }
 
 
-    protected virtual Expression VisitProjection(ProjectionExpression proj)
+    protected internal virtual Expression VisitProjection(ProjectionExpression proj)
     {
         SelectExpression source = (SelectExpression)Visit(proj.Source);
         Expression projector = Visit(proj.Projector);
@@ -107,7 +76,7 @@ public class SqlExpressionVisitor : ExpressionVisitor
         return proj;
     }
 
-    protected virtual Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
+    protected internal virtual Expression VisitFunctionCalling(FunctionCallingExpression funcCalling)
     {
         return funcCalling;
     }

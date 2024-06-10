@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
 
 
 namespace OracleOrm;
@@ -11,17 +6,19 @@ namespace OracleOrm;
 
 public class ProjectionExpression : SqlExpression
 {
-    SelectExpression source;
-    Expression projector;
+    public SelectExpression Source { get; }
+    public Expression Projector { get; }
 
+   
     internal ProjectionExpression(SelectExpression source, Expression projector)
-        : base(SqlExpressionType.Projection, projector.Type)
+        : base(projector.Type)
     {
-        this.source = source;
-        this.projector = projector;
+        Source = source;
+        Projector = projector;
     }
 
-
-    internal SelectExpression Source => source;
-    internal Expression Projector => projector;
+    protected internal override Expression Accept(SqlExpressionVisitor sqlVisitor)
+    {
+        return sqlVisitor.VisitProjection(this);
+    }
 }
