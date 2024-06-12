@@ -21,4 +21,9 @@ public class ProjectionExpression : SqlExpression
     {
         return sqlVisitor.VisitProjection(this);
     }
+
+    public override string ToString()
+    {
+        return $"({Source}) => {Projector}";
+    }
 }

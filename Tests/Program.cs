@@ -15,6 +15,14 @@ class Program
 
         DevContext context = new();
 
+
+        //var res0 = (from s in context.Students
+        //            join g in context.Groups
+        //              on 1 equals 1
+        //          select new { StudentName = s.Name, GroupName = g.Name }).ToList();
+
+
+
         string k = "Katya";
         int i = 3;
 

@@ -8,6 +8,12 @@ using System.Threading.Tasks;
 
 namespace OracleOrm;
 
+
+
+
+
+
+
 internal sealed class ProjectedColumns
 {
     Expression projector;
@@ -102,12 +108,14 @@ internal class ColumnProjector : SqlExpressionVisitor
             }
             else
             {
-                string columnName = this.GetNextColumnName();
-                int ordinal = this.columns.Count;
+                throw null;
 
-                this.columns.Add(new ColumnDeclaration(columnName, expression));
+                //string columnName = this.GetNextColumnName();
+                //int ordinal = this.columns.Count;
 
-                return new ColumnExpression(expression.Type, this.newAlias, columnName, ordinal);
+                //this.columns.Add(new ColumnDeclaration(columnName, expression));
+
+                //return new ColumnExpression(expression.Type, this.newAlias, columnName, ordinal);
             }
         }
         else

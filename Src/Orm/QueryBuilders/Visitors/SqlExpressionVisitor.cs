@@ -100,7 +100,7 @@ public class SqlExpressionVisitor : ExpressionVisitor
 
             if (alternate != null)
             {
-                alternate.Add(new ColumnDeclaration(column.Name, e));
+                alternate.Add(new ColumnDeclaration(column.Name, (ColumnExpression)e));
             }
         }
 

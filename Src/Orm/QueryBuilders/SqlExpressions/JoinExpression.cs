@@ -34,4 +34,9 @@ public class JoinExpression : SqlExpression
     {
         return sqlVisitor.VisitJoin(this);
     }
+
+    public override string ToString()
+    {
+        return $"{Left} join {Right} on {Condition}";
+    }
 }

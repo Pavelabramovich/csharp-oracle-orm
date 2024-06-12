@@ -24,4 +24,9 @@ public class FunctionCallingExpression : SqlExpression
     {
         return sqlVisitor.VisitFunctionCalling(this);
     }
+
+    public override string ToString()
+    {
+        return $"{Method.Name}({string.Join(", ", Params)})";
+    }
 }

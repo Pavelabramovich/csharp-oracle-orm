@@ -77,6 +77,10 @@ public class OracleQueryProvider : QueryProvider
         }
 
         string commandText = new QueryFormatter(_context).Format(projection.Source);
+
+
+        Console.WriteLine(commandText + "\n\n");
+
         LambdaExpression projector = new ProjectionBuilder().Build(projection.Projector, projection.Source.Alias);
 
         return new TranslateResult { CommandText = commandText, Projector = projector };

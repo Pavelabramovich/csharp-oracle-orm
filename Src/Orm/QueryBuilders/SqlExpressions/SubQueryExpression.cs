@@ -22,4 +22,9 @@ public class SubQueryExpression : FunctionCallingExpression
     {
         return sqlVisitor.VisitSubQuery(this);
     }
+
+    public override string ToString()
+    {
+        return $"rawSql({Sql})";
+    }
 }

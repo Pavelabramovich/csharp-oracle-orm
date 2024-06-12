@@ -1,5 +1,5 @@
-﻿
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
+
 
 namespace OracleOrm;
 
@@ -23,5 +23,10 @@ public class ColumnExpression : SqlExpression
     protected internal override Expression Accept(SqlExpressionVisitor sqlVisitor)
     {
         return sqlVisitor.VisitColumn(this);
+    }
+
+    public override string ToString()
+    {
+        return $"{Alias}.{Name}";   
     }
 }

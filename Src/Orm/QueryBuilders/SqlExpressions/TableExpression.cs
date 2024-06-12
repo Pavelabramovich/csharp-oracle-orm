@@ -30,4 +30,9 @@ public class TableExpression : SqlExpression
     {
         return sqlVisitor.VisitTable(this);
     }
+
+    public override string ToString()
+    {
+        return $"{Name} {Alias}";
+    }
 }

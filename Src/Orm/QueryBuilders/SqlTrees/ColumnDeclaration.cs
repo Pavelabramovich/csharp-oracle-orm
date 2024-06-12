@@ -10,9 +10,14 @@ public class ColumnDeclaration
     public Expression Expression { get; }
 
 
-    public ColumnDeclaration(string name, Expression expression)
+    public ColumnDeclaration(string name, ColumnExpression expression)
     {
         Name = name;
         Expression = expression;
+    }
+
+    public override string ToString()
+    {
+        return $"{Expression} as {Name}";
     }
 }
