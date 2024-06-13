@@ -19,7 +19,7 @@ class Program
         //var res0 = (from s in context.Students
         //            join g in context.Groups
         //              on 1 equals 1
-        //          select new { StudentName = s.Name, GroupName = g.Name }).ToList();
+        //            select new { StudentName = s.Name, GroupName = g.Name }).ToList();
 
 
 
@@ -29,8 +29,7 @@ class Program
         var res1 = context.Students
             .Select(s => s)
             .Where(s => s.Name != k)
-            .Select(s => s.Id * (2 + i))
-           // .Select(s => s.Name[0])
+            .Select(s => s.Name[0])
             .ToList();
 
         var res2 = context.Students

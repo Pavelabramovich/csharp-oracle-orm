@@ -65,9 +65,7 @@ public class OracleQueryProvider : QueryProvider
 
     private TranslateResult Translate(Expression expression) 
     {
-        ProjectionExpression projection = expression as ProjectionExpression;
-
-        if (projection == null)
+        if (expression is not ProjectionExpression projection)
         {
             expression = PretranslateEvaluator.Evaluate(expression);
 
@@ -83,6 +81,6 @@ public class OracleQueryProvider : QueryProvider
 
         LambdaExpression projector = new ProjectionBuilder().Build(projection.Projector, projection.Source.Alias);
 
-        return new TranslateResult { CommandText = commandText, Projector = projector };
+        return new TranslateResult() { CommandText = commandText, Projector = projector };
     }
 }

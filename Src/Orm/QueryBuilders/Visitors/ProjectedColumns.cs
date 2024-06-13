@@ -108,14 +108,14 @@ internal class ColumnProjector : SqlExpressionVisitor
             }
             else
             {
-                throw null;
+              //  throw null;
 
-                //string columnName = this.GetNextColumnName();
-                //int ordinal = this.columns.Count;
+                string columnName = this.GetNextColumnName();
+                int ordinal = this.columns.Count;
 
-                //this.columns.Add(new ColumnDeclaration(columnName, expression));
+                this.columns.Add(new ColumnDeclaration(columnName, expression));
 
-                //return new ColumnExpression(expression.Type, this.newAlias, columnName, ordinal);
+                return new ColumnExpression(expression.Type, this.newAlias, columnName, ordinal);
             }
         }
         else

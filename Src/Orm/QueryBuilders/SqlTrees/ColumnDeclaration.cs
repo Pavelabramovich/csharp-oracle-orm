@@ -10,7 +10,7 @@ public class ColumnDeclaration
     public Expression Expression { get; }
 
 
-    public ColumnDeclaration(string name, ColumnExpression expression)
+    public ColumnDeclaration(string name, Expression expression)
     {
         Name = name;
         Expression = expression;
