@@ -35,6 +35,6 @@ public class SelectExpression : SqlExpression
 
     public override string ToString()
     {
-        return $"select ({string.Join(", ", Columns)}) from ({From})" + (Where is null ? "" : $" where ({Where})");
+        return $"select ({string.Join(", ", Columns)}) from ({From})" + (Where is null ? "" : $" where ({Where})") + $" as {Alias}";
     }
 }

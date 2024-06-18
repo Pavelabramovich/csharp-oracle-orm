@@ -27,6 +27,6 @@ public class FunctionCallingExpression : SqlExpression
 
     public override string ToString()
     {
-        return $"{Method.Name}({string.Join(", ", Params)})";
+        return $"{Instance}.{Method.Name}({string.Join(", ", Params)})";
     }
 }

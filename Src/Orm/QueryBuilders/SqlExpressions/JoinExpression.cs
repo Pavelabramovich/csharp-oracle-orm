@@ -37,6 +37,6 @@ public class JoinExpression : SqlExpression
 
     public override string ToString()
     {
-        return $"{Left} join {Right} on {Condition}";
+        return $"{Left} {JoinType.ToString().ToLower()} {Right} on {Condition}";
     }
 }

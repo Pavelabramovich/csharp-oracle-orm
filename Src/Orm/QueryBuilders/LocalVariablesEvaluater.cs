@@ -75,6 +75,7 @@ public static class PretranslateEvaluator
 
         private bool _isNodeEvaluatable;
 
+
         public EvaluatableNodesFilter(Func<Expression, bool> isEvaluatable)
         {
             _isEvaluatable = isEvaluatable;
@@ -85,8 +86,12 @@ public static class PretranslateEvaluator
 
         public HashSet<Expression> GetEvaluatableNodes(Expression expression)
         {
+            _evaluatableNodes.Clear();
+            _isNodeEvaluatable = false;
+
             Visit(expression);
-            return _evaluatableNodes;
+
+            return [.. _evaluatableNodes];
         }
         
         public override Expression? Visit(Expression? expression)

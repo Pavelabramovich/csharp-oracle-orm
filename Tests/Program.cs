@@ -27,9 +27,9 @@ class Program
         int i = 3;
 
         var res1 = context.Students
-            .Select(s => s)
+        //    .Select(s => s)
             .Where(s => s.Name != k)
-            .Select(s => s.Name[0])
+            .Select(s => new { Name = s.Name[0], s.Id })
             .ToList();
 
         var res2 = context.Students
@@ -47,21 +47,22 @@ class Program
                     select new { s.Name }).ToList();
 
         var res4_2 = context.Students
-            .Join(context.Groups, s => s.GroupId, g => g.Id, (sName, gName) => sName)
+            .Join(context.Groups, s => s.GroupId, g => g.Id, (s, g) => s)
             .ToList();
 
         // context.Students.Delete(s => s.Name == "Katya");
 
        // context.Students.Update([("Name", "lol"), ("Id", 100)], s => s.Name == "Lera");
 
-        var res09 = context.Students
-            .Where(s => context.Students
-                .Exists(s1 => s1.Id == 215))
-            .ToList();
+        //var res09 = context.Students
+        //    .Where(s => context.Students
+        //        .Exists(s1 => s1.Id == 215))
+        //    .ToList();
 
         List<int> A = [1, 2, 3, 4, 5];
         List<int> B = [.. from a in A select a + 12];
 
+        Console.ReadKey();
         Console.ReadKey();
     }
 }

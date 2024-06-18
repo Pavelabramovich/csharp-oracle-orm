@@ -5,20 +5,20 @@ using System.Reflection;
 namespace OracleOrm;
 
 
-internal class QueryBinder : ExpressionVisitor
+public class QueryBinder : ExpressionVisitor
 {
-    private  ColumnProjector _columnProjector;
-    private readonly Dictionary<ParameterExpression, Expression> _parametorMap;
+    private readonly ColumnProjector _columnProjector;
+    private readonly Dictionary<ParameterExpression, Expression> _parameterMap;
 
     private int _aliasCounter;
 
     private readonly OracleDbContext _context;
 
 
-    internal QueryBinder(OracleDbContext context)
+    public QueryBinder(OracleDbContext context)
     {
-        _columnProjector = new ColumnProjector(expression => expression is ColumnExpression);
-        _parametorMap = []; 
+        _columnProjector = new ColumnProjector(isColumn: expression => expression is ColumnExpression);
+        _parameterMap = []; 
 
         _aliasCounter = 0;
 
@@ -26,41 +26,14 @@ internal class QueryBinder : ExpressionVisitor
     }
 
 
-    internal Expression Bind(Expression expression)
+    public Expression Bind(Expression expression)
     {
+        _parameterMap.Clear();
+        _aliasCounter = 0;
+
         return Visit(expression);
     }
 
-    private static Expression StripQuotes(Expression expression)
-    {
-        while (expression.NodeType == ExpressionType.Quote)
-        {
-            expression = ((UnaryExpression)expression).Operand;
-        }
-
-        return expression;
-    }
-
-    private string GetNextAlias()
-    {
-        return $"t{_aliasCounter++}";
-    }
-
-    private ProjectedColumns ProjectColumns(Expression expression, string newAlias, string existingAlias)
-    {
-        return _columnProjector.ProjectColumns(expression, newAlias, existingAlias);
-    }
-
-
-    public Expression VisitMc(LambdaExpression LambdaExpr)
-    {
-        var queryBinder = new QueryBinder(_context);
-
-        ProjectionExpression projection = (ProjectionExpression)queryBinder.Visit(LambdaExpr.Body);
-        queryBinder._parametorMap[LambdaExpr.Parameters[0]] = projection.Projector;
-
-        return queryBinder.Visit(LambdaExpr);
-    }
 
     protected override Expression VisitMethodCall(MethodCallExpression callExpression)
     {
@@ -78,50 +51,51 @@ internal class QueryBinder : ExpressionVisitor
         else if (method.Name == "Join")
         {
             return this.BindJoin(
-                callExpression.Type, callExpression.Arguments[0], callExpression.Arguments[1],
+                callExpression.Type, 
+                callExpression.Arguments[0], 
+                callExpression.Arguments[1],
 
                 (LambdaExpression)StripQuotes(callExpression.Arguments[2]),
                 (LambdaExpression)StripQuotes(callExpression.Arguments[3]),
                 (LambdaExpression)StripQuotes(callExpression.Arguments[4])
             );
         }
-
         else if (method == ParsableMethods.StringIndexing)
         {
             return BindMethodCalling(method, callExpression);
         }
-        else if (method.Name == "Exists")
-        {
-            var predicate = callExpression.Arguments[0];
+        //else if (method.Name == "Exists")
+        //{
+        //    var predicate = callExpression.Arguments[0];
 
-            var qf = new QueryFormatter(_context, monkeyPatch: true);
+        //    var qf = new QueryFormatter(_context, monkeyPatch: true);
 
-            string whereClause = qf.Format(predicate);
+        //    string whereClause = qf.Format(predicate);
 
-            var table = callExpression.Object.Type.GetGenericArguments();
+        //    var table = callExpression.Object.Type.GetGenericArguments();
 
-            string tableName = table[0].Name + "s";
+        //    string tableName = table[0].Name + "s";
 
-            string sql = $"""EXISTS (SELECT * FROM {tableName} WHERE {whereClause})""";
+        //    string sql = $"""EXISTS (SELECT * FROM {tableName} WHERE {whereClause})""";
 
-            return BindSubQuery(method, callExpression, sql);
-        }
-        else if (method.Name == "NotExists")
-        {
-            var predicate = callExpression.Arguments[0];
+        //    return BindSubQuery(method, callExpression, sql);
+        //}
+        //else if (method.Name == "NotExists")
+        //{
+        //    var predicate = callExpression.Arguments[0];
 
-            var qf = new QueryFormatter(_context, monkeyPatch: true);
+        //    var qf = new QueryFormatter(_context, monkeyPatch: true);
 
-            string whereClause = qf.Format(predicate);
+        //    string whereClause = qf.Format(predicate);
 
-            var table = callExpression.Object.Type.GetGenericArguments();
+        //    var table = callExpression.Object.Type.GetGenericArguments();
 
-            string tableName = table[0].Name + "s";
+        //    string tableName = table[0].Name + "s";
 
-            string sql = $"""NOT EXISTS (SELECT * FROM {tableName} WHERE {whereClause})""";
+        //    string sql = $"""NOT EXISTS (SELECT * FROM {tableName} WHERE {whereClause})""";
 
-            return BindSubQuery(method, callExpression, sql);
-        }
+        //    return BindSubQuery(method, callExpression, sql);
+        //}
 
         //else
         //{
@@ -139,7 +113,7 @@ internal class QueryBinder : ExpressionVisitor
     private Expression BindSelect(Type resultType, Expression source, LambdaExpression selector)
     {
         ProjectionExpression projection = (ProjectionExpression)Visit(source);
-        _parametorMap[selector.Parameters[0]] = projection.Projector;
+        _parameterMap[selector.Parameters[0]] = projection.Projector;
 
         Expression expression = Visit(selector.Body);
       
@@ -155,7 +129,7 @@ internal class QueryBinder : ExpressionVisitor
     private Expression BindWhere(Type resultType, Expression source, LambdaExpression predicate)
     {
         ProjectionExpression projection = (ProjectionExpression)Visit(source);
-        _parametorMap[predicate.Parameters[0]] = projection.Projector;
+        _parameterMap[predicate.Parameters[0]] = projection.Projector;
         Expression where = Visit(predicate.Body);
         string alias = GetNextAlias();
 
@@ -171,14 +145,14 @@ internal class QueryBinder : ExpressionVisitor
     {
         ProjectionExpression outerProjection = (ProjectionExpression)Visit(outerSource);
         ProjectionExpression innerProjection = (ProjectionExpression)Visit(innerSource);
-        _parametorMap[outerKey.Parameters[0]] = outerProjection.Projector;
+        _parameterMap[outerKey.Parameters[0]] = outerProjection.Projector;
 
         Expression outerKeyExpr = Visit(outerKey.Body);
-        _parametorMap[innerKey.Parameters[0]] = innerProjection.Projector;
+        _parameterMap[innerKey.Parameters[0]] = innerProjection.Projector;
         Expression innerKeyExpr = Visit(innerKey.Body);
 
-        _parametorMap[resultSelector.Parameters[0]] = outerProjection.Projector;
-        _parametorMap[resultSelector.Parameters[1]] = innerProjection.Projector;
+        _parameterMap[resultSelector.Parameters[0]] = outerProjection.Projector;
+        _parameterMap[resultSelector.Parameters[1]] = innerProjection.Projector;
 
         Expression resultExpr = Visit(resultSelector.Body);
         JoinExpression join = new JoinExpression(resultType, JoinType.InnerJoin, outerProjection.Source, innerProjection.Source, Expression.Equal(outerKeyExpr, innerKeyExpr));
@@ -267,10 +241,14 @@ internal class QueryBinder : ExpressionVisitor
             Type columnType = GetColumnType(mi);
             int ordinal = columns.Count;
 
-            bindings.Add(Expression.Bind(mi, new ColumnExpression(columnType, selectAlias, columnName, ordinal)));
+            // Add to bindings ColumnExpression with selectAlias because in futere we get value from this select,
+            // using columnName
+            //
+            //  SELECT (t0.Id, t0.Name) FROM (...) t1 ==> new Entity() { Id = t1.Id, Name = t1.Name } 
+            //
             columns.Add(new ColumnDeclaration(columnName, new ColumnExpression(columnType, tableAlias, columnName, ordinal)));
+            bindings.Add(Expression.Bind(mi, new ColumnExpression(columnType, selectAlias, columnName, ordinal)));
         }
-
 
         Expression projector = Expression.MemberInit(Expression.New(table.ElementType), bindings);
         Type resultType = typeof(IEnumerable<>).MakeGenericType(table.ElementType);
@@ -300,7 +278,7 @@ internal class QueryBinder : ExpressionVisitor
 
     protected override Expression VisitParameter(ParameterExpression parameterExpression)
     {
-        if (_parametorMap.TryGetValue(parameterExpression, out Expression? expression))
+        if (_parameterMap.TryGetValue(parameterExpression, out Expression? expression))
         {
             return expression!;
         }
@@ -377,6 +355,27 @@ internal class QueryBinder : ExpressionVisitor
         PropertyInfo pi = (PropertyInfo)member;
 
         return Expression.Property(source, pi);
+    }
+
+
+    private static Expression StripQuotes(Expression expression)
+    {
+        while (expression.NodeType == ExpressionType.Quote)
+        {
+            expression = ((UnaryExpression)expression).Operand;
+        }
+
+        return expression;
+    }
+
+    private string GetNextAlias()
+    {
+        return $"t{_aliasCounter++}";
+    }
+
+    private ProjectedColumns ProjectColumns(Expression expression, string newAlias, string existingAlias)
+    {
+        return _columnProjector.ProjectColumns(expression, newAlias, existingAlias);
     }
 }
 

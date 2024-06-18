@@ -24,6 +24,6 @@ public class ProjectionExpression : SqlExpression
 
     public override string ToString()
     {
-        return $"({Source}) => {Projector}";
+        return $"({Source}) ==> {Projector}";
     }
 }

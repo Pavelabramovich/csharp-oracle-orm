@@ -1,12 +1,6 @@
-﻿//using OracleOrm.Core;
-using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using System.Data.Common;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 
 namespace OracleOrm;
@@ -77,10 +71,8 @@ internal class ProjectionReader<T> : IEnumerable<T>, IEnumerable
             get { return _current; }
         }
 
-        object IEnumerator.Current
-        {
-            get { return _current; }
-        }
+        object IEnumerator.Current => Current!;
+
 
         public bool MoveNext()
         {
@@ -121,20 +113,12 @@ internal class ProjectionReader<T> : IEnumerable<T>, IEnumerable
         private static bool CanEvaluateLocally(Expression expression)
         {
             if (expression.NodeType == ExpressionType.Parameter ||
-                expression.NodeType.IsDbExpression())
+                expression is SqlExpression)
             {
                 return false;
             }
 
             return true;
         }
-    }
-}
-
-public static class ExpressionTypeExtension
-{
-    public static bool IsDbExpression(this ExpressionType expressionType)
-    {
-        return (int)expressionType >= 0;
     }
 }
